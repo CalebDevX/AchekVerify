@@ -1,0 +1,1133 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: WhatOTP - WhatsApp OTP Verification SaaS API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: plans
+    description: Subscription plan operations
+  - name: subscriptions
+    description: User subscription operations
+  - name: api-keys
+    description: API key management
+  - name: whatsapp-numbers
+    description: Admin WhatsApp number management
+  - name: otp
+    description: OTP send and verify operations
+  - name: users
+    description: Admin user management
+  - name: dashboard
+    description: Dashboard stats and analytics
+  - name: payments
+    description: Paystack payment operations
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # Auth
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # Plans
+  /plans:
+    get:
+      operationId: listPlans
+      tags: [plans]
+      summary: List all available plans
+      responses:
+        "200":
+          description: List of plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Plan"
+
+  # Subscriptions
+  /subscriptions/current:
+    get:
+      operationId: getCurrentSubscription
+      tags: [subscriptions]
+      summary: Get current user subscription
+      responses:
+        "200":
+          description: Current subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "404":
+          description: No active subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /subscriptions:
+    post:
+      operationId: createSubscription
+      tags: [subscriptions]
+      summary: Subscribe to a plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionInput"
+      responses:
+        "201":
+          description: Subscribed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /subscriptions/{id}/cancel:
+    post:
+      operationId: cancelSubscription
+      tags: [subscriptions]
+      summary: Cancel a subscription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+
+  # API Keys
+  /api-keys:
+    get:
+      operationId: listApiKeys
+      tags: [api-keys]
+      summary: List user API keys
+      responses:
+        "200":
+          description: API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiKey"
+    post:
+      operationId: createApiKey
+      tags: [api-keys]
+      summary: Create a new API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiKeyInput"
+      responses:
+        "201":
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyWithSecret"
+
+  /api-keys/{id}/revoke:
+    post:
+      operationId: revokeApiKey
+      tags: [api-keys]
+      summary: Revoke an API key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKey"
+
+  # WhatsApp Numbers (Admin)
+  /admin/whatsapp-numbers:
+    get:
+      operationId: listWhatsappNumbers
+      tags: [whatsapp-numbers]
+      summary: List all WhatsApp numbers (admin)
+      responses:
+        "200":
+          description: WhatsApp numbers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WhatsappNumber"
+    post:
+      operationId: createWhatsappNumber
+      tags: [whatsapp-numbers]
+      summary: Add a WhatsApp number (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WhatsappNumberInput"
+      responses:
+        "201":
+          description: Number added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsappNumber"
+
+  /admin/whatsapp-numbers/{id}:
+    get:
+      operationId: getWhatsappNumber
+      tags: [whatsapp-numbers]
+      summary: Get WhatsApp number details (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: WhatsApp number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsappNumber"
+    delete:
+      operationId: deleteWhatsappNumber
+      tags: [whatsapp-numbers]
+      summary: Delete a WhatsApp number (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /admin/whatsapp-numbers/{id}/qr:
+    get:
+      operationId: getWhatsappQr
+      tags: [whatsapp-numbers]
+      summary: Get QR code for WhatsApp number session (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: QR code data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QrCodeResponse"
+
+  # OTP Endpoints (used by API customers)
+  /otp/send:
+    post:
+      operationId: sendOtp
+      tags: [otp]
+      summary: Send OTP via WhatsApp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpSendInput"
+      responses:
+        "200":
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpSendResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /otp/verify:
+    post:
+      operationId: verifyOtp
+      tags: [otp]
+      summary: Verify OTP code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpVerifyInput"
+      responses:
+        "200":
+          description: OTP verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpVerifyResponse"
+        "400":
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # OTP Logs (for user dashboard)
+  /otp/logs:
+    get:
+      operationId: listOtpLogs
+      tags: [otp]
+      summary: List OTP request logs for current user
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: OTP logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OtpLog"
+
+  # Payments (Paystack)
+  /payments/initialize:
+    post:
+      operationId: initializePayment
+      tags: [payments]
+      summary: Initialize a Paystack payment for a plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInitInput"
+      responses:
+        "200":
+          description: Payment initialized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentInitResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/verify/{reference}:
+    get:
+      operationId: verifyPayment
+      tags: [payments]
+      summary: Verify Paystack payment and activate subscription
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Subscription created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "400":
+          description: Payment not successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # User Custom WhatsApp Number
+  /user/whatsapp-number:
+    get:
+      operationId: getUserWhatsappNumber
+      tags: [whatsapp-numbers]
+      summary: Get user's linked custom WhatsApp number
+      responses:
+        "200":
+          description: User's WhatsApp number or null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/WhatsappNumber"
+                  - type: "null"
+    post:
+      operationId: registerUserWhatsappNumber
+      tags: [whatsapp-numbers]
+      summary: Register a custom WhatsApp number (Business+ plans)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserWhatsappNumberInput"
+      responses:
+        "201":
+          description: Number registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsappNumber"
+    delete:
+      operationId: deleteUserWhatsappNumber
+      tags: [whatsapp-numbers]
+      summary: Remove user's custom WhatsApp number
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /user/whatsapp-number/qr:
+    get:
+      operationId: getUserWhatsappQr
+      tags: [whatsapp-numbers]
+      summary: Get QR code to link user's custom WhatsApp number
+      responses:
+        "200":
+          description: QR code data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QrCodeResponse"
+
+  # Admin Users
+  /admin/users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users (admin)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserWithSubscription"
+
+  /admin/users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user details (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserWithSubscription"
+
+  /admin/users/{id}/suspend:
+    post:
+      operationId: suspendUser
+      tags: [users]
+      summary: Suspend a user (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User suspended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /admin/users/{id}/assign-plan:
+    post:
+      operationId: adminAssignPlan
+      tags: [users]
+      summary: Assign a plan to a user (admin override)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignPlanInput"
+      responses:
+        "200":
+          description: Plan assigned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /admin/whatsapp-numbers/{id}/name:
+    post:
+      operationId: updateWhatsappNumberName
+      tags: [whatsapp]
+      summary: Update WhatsApp display name for a number (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DisplayNameInput"
+      responses:
+        "200":
+          description: Name updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /user/whatsapp-number/name:
+    post:
+      operationId: requestWhatsappNameChange
+      tags: [whatsapp]
+      summary: Request a WhatsApp display name change (Business/Enterprise users)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DisplayNameInput"
+      responses:
+        "200":
+          description: Name change applied or queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # Dashboard Stats
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard statistics for current user
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [dashboard]
+      summary: Get platform-wide admin statistics
+      responses:
+        "200":
+          description: Admin stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+
+    # Auth
+    RegisterInput:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        name:
+          type: string
+          minLength: 1
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [user, token]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+
+    User:
+      type: object
+      required: [id, email, name, role, createdAt]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+        suspended:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    UserWithSubscription:
+      type: object
+      required: [id, email, name, role, createdAt]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+        suspended:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        subscription:
+          $ref: "#/components/schemas/Subscription"
+        otpCount:
+          type: integer
+
+    # Plans
+    Plan:
+      type: object
+      required: [id, name, period, price, currency, otpLimit, features]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        period:
+          type: string
+          enum: [weekly, monthly, yearly]
+        price:
+          type: number
+        currency:
+          type: string
+        otpLimit:
+          type: integer
+        features:
+          type: array
+          items:
+            type: string
+        popular:
+          type: boolean
+        allowCustomNumber:
+          type: boolean
+        allowUsaNumbers:
+          type: boolean
+
+    # Subscriptions
+    Subscription:
+      type: object
+      required: [id, userId, planId, status, startDate, endDate]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        planId:
+          type: integer
+        plan:
+          $ref: "#/components/schemas/Plan"
+        status:
+          type: string
+          enum: [active, cancelled, expired]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        otpUsed:
+          type: integer
+
+    SubscriptionInput:
+      type: object
+      required: [planId]
+      properties:
+        planId:
+          type: integer
+
+    # API Keys
+    ApiKey:
+      type: object
+      required: [id, name, keyPrefix, status, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        keyPrefix:
+          type: string
+        status:
+          type: string
+          enum: [active, revoked]
+        lastUsedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        requestCount:
+          type: integer
+
+    ApiKeyWithSecret:
+      type: object
+      required: [id, name, keyPrefix, status, createdAt, secret]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        keyPrefix:
+          type: string
+        status:
+          type: string
+          enum: [active, revoked]
+        lastUsedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        requestCount:
+          type: integer
+        secret:
+          type: string
+
+    ApiKeyInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+
+    # Admin plan assignment
+    AssignPlanInput:
+      type: object
+      required: [planId]
+      properties:
+        planId:
+          type: integer
+
+    # WhatsApp display name change
+    DisplayNameInput:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 25
+
+    # Payments
+    PaymentInitInput:
+      type: object
+      required: [planId]
+      properties:
+        planId:
+          type: integer
+
+    PaymentInitResponse:
+      type: object
+      required: [authorizationUrl, reference, planId, amount, currency]
+      properties:
+        authorizationUrl:
+          type: string
+        reference:
+          type: string
+        planId:
+          type: integer
+        planName:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+
+    # User custom number input
+    UserWhatsappNumberInput:
+      type: object
+      required: [phoneNumber]
+      properties:
+        phoneNumber:
+          type: string
+          minLength: 7
+        label:
+          type: string
+
+    # WhatsApp Numbers
+    WhatsappNumber:
+      type: object
+      required: [id, phoneNumber, country, status, createdAt]
+      properties:
+        id:
+          type: integer
+        phoneNumber:
+          type: string
+        country:
+          type: string
+          enum: [us, ng, uk]
+        label:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [disconnected, connecting, connected, error]
+        sessionActive:
+          type: boolean
+        otpSentCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    WhatsappNumberInput:
+      type: object
+      required: [phoneNumber, country]
+      properties:
+        phoneNumber:
+          type: string
+          minLength: 7
+        country:
+          type: string
+          enum: [us, ng, uk]
+        label:
+          type: string
+
+    QrCodeResponse:
+      type: object
+      required: [qrCode, status]
+      properties:
+        qrCode:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [disconnected, connecting, connected, error]
+
+    # OTP
+    OtpSendInput:
+      type: object
+      required: [phoneNumber]
+      properties:
+        phoneNumber:
+          type: string
+          minLength: 7
+        template:
+          type: string
+
+    OtpSendResponse:
+      type: object
+      required: [requestId, expiresAt]
+      properties:
+        requestId:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        message:
+          type: string
+
+    OtpVerifyInput:
+      type: object
+      required: [requestId, code]
+      properties:
+        requestId:
+          type: string
+        code:
+          type: string
+          minLength: 4
+
+    OtpVerifyResponse:
+      type: object
+      required: [valid]
+      properties:
+        valid:
+          type: boolean
+        message:
+          type: string
+
+    OtpLog:
+      type: object
+      required: [id, phoneNumber, status, createdAt]
+      properties:
+        id:
+          type: integer
+        phoneNumber:
+          type: string
+        status:
+          type: string
+          enum: [pending, sent, verified, failed, expired]
+        requestId:
+          type: string
+        country:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    # Dashboard
+    DashboardStats:
+      type: object
+      required: [otpSentToday, otpSentMonth, otpSuccessRate, remainingOtps, activeApiKeys]
+      properties:
+        otpSentToday:
+          type: integer
+        otpSentMonth:
+          type: integer
+        otpSuccessRate:
+          type: number
+        remainingOtps:
+          type: integer
+        activeApiKeys:
+          type: integer
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/OtpLog"
+
+    AdminStats:
+      type: object
+      required: [totalUsers, activeSubscriptions, totalOtpSent, connectedNumbers, revenue]
+      properties:
+        totalUsers:
+          type: integer
+        activeSubscriptions:
+          type: integer
+        totalOtpSent:
+          type: integer
+        connectedNumbers:
+          type: integer
+        revenue:
+          type: number
+        recentUsers:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        otpByCountry:
+          type: array
+          items:
+            type: object
+            required: [country, count]
+            properties:
+              country:
+                type: string
+              count:
+                type: integer
