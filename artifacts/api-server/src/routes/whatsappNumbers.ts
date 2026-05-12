@@ -70,6 +70,22 @@ router.get("/admin/whatsapp-numbers/:id/qr", requireAdmin, async (req, res) => {
   return res.json({ qrCode: fresh.qrDataUrl, status: fresh.status });
 });
 
+// Retry QR generation for failed connections
+router.post("/admin/whatsapp-numbers/:id/retry-qr", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id as string);
+  const [number] = await db.select().from(whatsappNumbersTable).where(eq(whatsappNumbersTable.id, id)).limit(1);
+  if (!number) return res.status(404).json({ error: "Number not found" });
+
+  // Stop existing session if any
+  await stopSession(id);
+  // Start new session
+  startSession(id).catch(() => {});
+  await new Promise(r => setTimeout(r, 3000));
+
+  const fresh = getSessionState(id);
+  return res.json({ qrCode: fresh.qrDataUrl, status: fresh.status, message: "QR retry initiated" });
+});
+
 router.post("/admin/whatsapp-numbers/:id/disconnect", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id as string);
   await stopSession(id);
@@ -94,6 +110,22 @@ router.post("/admin/whatsapp-numbers/:id/name", requireAdmin, async (req: AuthRe
   }
   req.log.info({ numberId: id, displayName }, "WhatsApp display name updated");
   return res.json({ success: true, displayName });
+});
+
+// Polling endpoint for real-time status updates
+router.get("/admin/whatsapp-numbers/:id/status", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id as string);
+  const [number] = await db.select().from(whatsappNumbersTable).where(eq(whatsappNumbersTable.id, id)).limit(1);
+  if (!number) return res.status(404).json({ error: "Number not found" });
+
+  const live = getSessionState(id);
+  return res.json({
+    id: number.id,
+    status: live.status,
+    connected: live.connected,
+    qrAvailable: !!live.qrDataUrl,
+    lastUpdated: new Date().toISOString(),
+  });
 });
 
 // ─── User: custom number (Business / Enterprise plans) ─────────────────────
@@ -147,7 +179,19 @@ router.get("/user/whatsapp-number/qr", requireAuth, async (req: AuthRequest, res
   const fresh = getSessionState(number.id);
   return res.json({ qrCode: fresh.qrDataUrl, status: fresh.status });
 });
+// User retry QR
+router.post("/user/whatsapp-number/retry-qr", requireAuth, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const [number] = await db.select().from(whatsappNumbersTable).where(eq(whatsappNumbersTable.ownerId, userId)).limit(1);
+  if (!number) return res.status(404).json({ error: "No custom number registered" });
 
+  await stopSession(number.id);
+  startSession(number.id).catch(() => {});
+  await new Promise(r => setTimeout(r, 3000));
+
+  const fresh = getSessionState(number.id);
+  return res.json({ qrCode: fresh.qrDataUrl, status: fresh.status, message: "QR retry initiated" });
+});
 router.delete("/user/whatsapp-number", requireAuth, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
   const [number] = await db.select().from(whatsappNumbersTable).where(eq(whatsappNumbersTable.ownerId, userId)).limit(1);
@@ -156,7 +200,21 @@ router.delete("/user/whatsapp-number", requireAuth, async (req: AuthRequest, res
   await db.delete(whatsappNumbersTable).where(eq(whatsappNumbersTable.id, number.id));
   return res.json({ success: true });
 });
+// User status polling
+router.get("/user/whatsapp-number/status", requireAuth, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const [number] = await db.select().from(whatsappNumbersTable).where(eq(whatsappNumbersTable.ownerId, userId)).limit(1);
+  if (!number) return res.json(null);
 
+  const state = getSessionState(number.id);
+  return res.json({
+    id: number.id,
+    status: state.status,
+    connected: state.connected,
+    qrAvailable: !!state.qrDataUrl,
+    lastUpdated: new Date().toISOString(),
+  });
+});
 // User requests a display name change on their own number
 router.post("/user/whatsapp-number/name", requireAuth, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
