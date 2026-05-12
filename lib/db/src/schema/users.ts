@@ -9,6 +9,8 @@ export const usersTable = pgTable("users", {
   name: text("name").notNull(),
   role: text("role").notNull().default("user"),
   suspended: boolean("suspended").notNull().default(false),
+  phoneNumber: text("phone_number"),
+  phoneVerified: boolean("phone_verified").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -24,8 +24,11 @@ router.post("/payments/initialize", requireAuth, async (req: AuthRequest, res) =
 
   const reference = `watp_${randomBytes(12).toString("hex")}`;
 
-  // Determine callback URL from the request's origin header
-  const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, "") || "";
+  // Build callback URL — prefer BASE_DOMAIN env var, then request origin
+  const baseDomain = process.env.BASE_DOMAIN;
+  const origin = baseDomain
+    ? `https://${baseDomain}`
+    : (req.headers.origin || req.headers.referer?.replace(/\/$/, "") || "");
   const callbackUrl = `${origin}/dashboard/subscription?paystack_ref=${reference}`;
 
   const response = await fetch("https://api.paystack.co/transaction/initialize", {

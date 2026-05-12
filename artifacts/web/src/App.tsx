@@ -20,6 +20,7 @@ import Docs from "@/pages/dashboard/docs";
 import AdminDashboard from "@/pages/admin/index";
 import AdminNumbers from "@/pages/admin/numbers";
 import AdminUsers from "@/pages/admin/users";
+import AdminOtpLogs from "@/pages/admin/otp-logs";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -105,6 +106,13 @@ function Router() {
         <ProtectedRoute requireAdmin>
           <AdminLayout>
             <AdminUsers />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/otp-logs">
+        <ProtectedRoute requireAdmin>
+          <AdminLayout>
+            <AdminOtpLogs />
           </AdminLayout>
         </ProtectedRoute>
       </Route>

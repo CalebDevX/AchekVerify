@@ -6,7 +6,8 @@ import {
   Phone, 
   Users, 
   LogOut,
-  ArrowLeft
+  ArrowLeft,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +23,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { name: "Platform Stats", href: "/admin", icon: LayoutDashboard },
     { name: "WhatsApp Numbers", href: "/admin/numbers", icon: Phone },
     { name: "Users", href: "/admin/users", icon: Users },
+    { name: "OTP Logs", href: "/admin/otp-logs", icon: FileText },
   ];
 
   return (

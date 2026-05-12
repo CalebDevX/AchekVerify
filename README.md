@@ -4,14 +4,12 @@ A developer-first SaaS platform for the Nigerian market that lets businesses ver
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080, served at `/api`)
-- `pnpm --filter @workspace/web run dev` — run the frontend (served at `/`)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
+- Workflows: **API Server** (port 8080) and **Start application** (port 22333 → `/`) are pre-configured — just click Run
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `node_modules/.bin/tsx lib/db/src/seed.ts` — re-seed 4 NGN plans (run from workspace root using npx tsx)
-- Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET` — JWT signing key, `PAYSTACK_SECRET_KEY` — Paystack secret key for payments
+- `pnpm --filter @workspace/db run seed` — re-seed plans + admin/demo users
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
+- `pnpm run typecheck` — full typecheck across all packages
+- Required env: `DATABASE_URL`, `SESSION_SECRET`, `PAYSTACK_SECRET_KEY`, `BASE_DOMAIN` (e.g. `verify.achek.com.ng`)
 
 ## Stack
 
@@ -48,10 +46,12 @@ A developer-first SaaS platform for the Nigerian market that lets businesses ver
 
 ## Product
 
-- **Landing page** — hero, features, 4 NGN-priced plans (₦2,500–₦45,000/month)
+- **Landing page** — hero, features, 5 NGN-priced plans (Free + ₦2,500–₦45,000/month)
 - **User dashboard** — stats, API keys, subscription (Paystack checkout), OTP logs, API docs
-- **Admin panel** — user management, WhatsApp number management (real QR), platform stats
+- **Admin panel** — platform stats, WhatsApp number management (real QR), user management, OTP logs (filterable)
 - **OTP API** — `POST /api/otp/send` and `POST /api/otp/verify` (API key authenticated)
+- **WhatsApp phone verification** — users verify their phone via WhatsApp OTP on registration (`POST /auth/verify-phone/send` + `POST /auth/verify-phone/confirm`)
+- **Domain** — Paystack callback URL uses `BASE_DOMAIN` env var (e.g. `verify.achek.com.ng`)
 
 ## Plans (NGN, monthly)
 

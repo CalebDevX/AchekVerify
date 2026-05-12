@@ -13,6 +13,8 @@ export interface AuthRequest extends Request {
     name: string;
     role: string;
     suspended: boolean;
+    phoneNumber?: string | null;
+    phoneVerified?: boolean;
   };
 }
 
@@ -45,6 +47,8 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
       name: user.name,
       role: user.role,
       suspended: user.suspended,
+      phoneNumber: user.phoneNumber,
+      phoneVerified: user.phoneVerified,
     };
     next();
   } catch {
@@ -89,7 +93,7 @@ export async function requireApiKey(req: AuthRequest, res: Response, next: NextF
         (await import("drizzle-orm")).eq(usersTable.id, key.userId)
       ).limit(1);
       if (!user || user.suspended) continue;
-      req.user = { id: user.id, email: user.email, name: user.name, role: user.role, suspended: user.suspended };
+      req.user = { id: user.id, email: user.email, name: user.name, role: user.role, suspended: user.suspended, phoneNumber: user.phoneNumber, phoneVerified: user.phoneVerified };
 
       // Update last used + count
       await _db.update(apiKeysTable).set({

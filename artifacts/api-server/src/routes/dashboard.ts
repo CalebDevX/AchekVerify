@@ -59,6 +59,33 @@ router.get("/dashboard/stats", requireAuth, async (req: AuthRequest, res) => {
   });
 });
 
+// Admin: paginated OTP logs across all users
+router.get("/admin/otp-logs", requireAdmin, async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+  const offset = parseInt(req.query.offset as string) || 0;
+  const statusFilter = req.query.status as string | undefined;
+
+  const baseQuery = db.select({
+    id: otpRequestsTable.id,
+    requestId: otpRequestsTable.requestId,
+    phoneNumber: otpRequestsTable.phoneNumber,
+    status: otpRequestsTable.status,
+    country: otpRequestsTable.country,
+    createdAt: otpRequestsTable.createdAt,
+    userId: otpRequestsTable.userId,
+    userEmail: usersTable.email,
+    userName: usersTable.name,
+  })
+    .from(otpRequestsTable)
+    .innerJoin(usersTable, eq(otpRequestsTable.userId, usersTable.id));
+
+  const rows = statusFilter
+    ? await baseQuery.where(eq(otpRequestsTable.status, statusFilter)).orderBy(sql`${otpRequestsTable.createdAt} DESC`).limit(limit).offset(offset)
+    : await baseQuery.orderBy(sql`${otpRequestsTable.createdAt} DESC`).limit(limit).offset(offset);
+
+  return res.json(rows);
+});
+
 router.get("/admin/stats", requireAdmin, async (_req, res) => {
   const [totalUsersResult] = await db.select({ count: count() }).from(usersTable);
   const [activeSubsResult] = await db.select({ count: count() }).from(subscriptionsTable)
