@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useListPlans } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -185,6 +185,85 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
+function AnimatedPhone() {
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
+
+  useEffect(() => {
+    const cycle = () => {
+      setStep(0);
+      const t1 = setTimeout(() => setStep(1), 800);
+      const t2 = setTimeout(() => setStep(2), 2100);
+      const t3 = setTimeout(() => setStep(3), 3200);
+      const t4 = setTimeout(() => cycle(), 6500);
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+    };
+    const cleanup = cycle();
+    return cleanup;
+  }, []);
+
+  return (
+    <div className="relative w-[240px] h-[480px] flex-shrink-0">
+      <div className="absolute inset-0 rounded-[40px] bg-emerald-500 blur-2xl opacity-20 scale-110" />
+      <div className="relative w-full h-full rounded-[40px] border-[6px] border-gray-700 bg-gray-900 overflow-hidden shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between px-4 pt-3 pb-1 flex-shrink-0">
+          <span className="text-white text-[10px] font-semibold">9:41</span>
+          <div className="w-16 h-3.5 bg-gray-800 rounded-full" />
+          <div className="w-6 h-3 rounded border border-gray-500 overflow-hidden">
+            <div className="h-full w-4/5 bg-gray-400 rounded-sm" />
+          </div>
+        </div>
+        <div className="bg-[#075E54] px-3 py-2 flex items-center gap-2 flex-shrink-0">
+          <div className="w-7 h-7 rounded-full bg-emerald-400 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">K</div>
+          <div>
+            <div className="text-white text-[10px] font-semibold leading-tight">Kuda Bank</div>
+            <div className="text-emerald-200 text-[8px]">via WhatOTP</div>
+          </div>
+        </div>
+        <div className="flex-1 bg-[#0b1a10] px-2.5 py-3 space-y-2 overflow-hidden">
+          {step >= 2 && (
+            <div className="flex justify-start" style={{ animation: "fadeUp 0.35s ease" }}>
+              <div className="bg-[#1a2f20] rounded-lg rounded-tl-none px-2.5 py-2 max-w-[180px] shadow">
+                <p className="text-[9px] text-gray-300 leading-relaxed">Welcome! Tap below to verify your number.</p>
+                <p className="text-[7px] text-gray-500 text-right mt-1">9:41</p>
+              </div>
+            </div>
+          )}
+          {step === 1 && (
+            <div className="flex justify-start">
+              <div className="bg-[#1a2f20] rounded-lg rounded-tl-none px-2.5 py-2 shadow">
+                <div className="flex gap-1 items-center h-3">
+                  <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+              </div>
+            </div>
+          )}
+          {step >= 3 && (
+            <div className="flex justify-start" style={{ animation: "fadeUp 0.4s ease" }}>
+              <div className="bg-[#1a2f20] border border-emerald-900/60 rounded-lg rounded-tl-none px-2.5 py-2 max-w-[180px] shadow">
+                <p className="text-[9px] text-gray-200 leading-relaxed">Your OTP code is:</p>
+                <p className="text-emerald-400 text-base font-bold tracking-widest my-1">847 293</p>
+                <p className="text-[8px] text-gray-400">Valid for 10 minutes.</p>
+                <p className="text-[7px] text-gray-500 text-right mt-1">9:41 ✓✓</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      {step >= 3 && (
+        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold shadow-lg" style={{ animation: "popIn 0.25s ease" }}>
+          1
+        </div>
+      )}
+      <style>{`
+        @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes popIn { from { opacity:0; transform:scale(0.4); } to { opacity:1; transform:scale(1); } }
+      `}</style>
+    </div>
+  );
+}
+
 export default function Landing() {
   const { data: plans, isLoading } = useListPlans();
   const [activeTab, setActiveTab] = useState<CodeTab>("JavaScript");
@@ -198,29 +277,40 @@ export default function Landing() {
       <section className="relative bg-gray-950 text-white overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(0,0,0,0))]" />
         <div className="relative container mx-auto max-w-7xl px-4 md:px-6 pt-20 pb-24 md:pt-28 md:pb-32">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-sm text-emerald-400 mb-6">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              Now with Free plan — no credit card required
+          <div className="flex items-center justify-between gap-10">
+            {/* Left — text */}
+            <div className="flex-1 max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-sm text-emerald-400 mb-6">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                Now with Free plan — no credit card required
+              </div>
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
+                Nigeria's most reliable{" "}
+                <span className="text-emerald-400">WhatsApp OTP</span> API
+              </h1>
+              <p className="text-gray-400 text-lg md:text-xl leading-relaxed mb-8 max-w-2xl">
+                Replace expensive SMS with WhatsApp verification. 10× cheaper, real-time delivery, and less than 5 minutes to integrate. Trusted by Nigerian developers and businesses.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link href="/register">
+                  <Button size="lg" className="bg-emerald-600 hover:bg-emerald-500 text-white h-12 px-8 text-base font-semibold w-full sm:w-auto">
+                    Start free — no card needed
+                  </Button>
+                </Link>
+                <a href="#integrate">
+                  <Button size="lg" variant="outline" className="border-gray-700 text-gray-300 hover:text-white hover:bg-gray-800 hover:border-gray-600 h-12 px-8 text-base w-full sm:w-auto">
+                    <Terminal className="mr-2 h-4 w-4" /> View integration docs
+                  </Button>
+                </a>
+              </div>
             </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
-              Nigeria's most reliable{" "}
-              <span className="text-emerald-400">WhatsApp OTP</span> API
-            </h1>
-            <p className="text-gray-400 text-lg md:text-xl leading-relaxed mb-8 max-w-2xl">
-              Replace expensive SMS with WhatsApp verification. 10× cheaper, real-time delivery, and less than 5 minutes to integrate. Trusted by Nigerian developers and businesses.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Link href="/register">
-                <Button size="lg" className="bg-emerald-600 hover:bg-emerald-500 text-white h-12 px-8 text-base font-semibold w-full sm:w-auto">
-                  Start free — no card needed
-                </Button>
-              </Link>
-              <a href="#integrate">
-                <Button size="lg" variant="outline" className="border-gray-700 text-gray-300 hover:text-white hover:bg-gray-800 hover:border-gray-600 h-12 px-8 text-base w-full sm:w-auto">
-                  <Terminal className="mr-2 h-4 w-4" /> View integration docs
-                </Button>
-              </a>
+            {/* Right — animated phone */}
+            <div className="hidden lg:flex flex-col items-center gap-4 flex-shrink-0">
+              <AnimatedPhone />
+              <div className="text-center">
+                <p className="text-emerald-400 text-xs font-medium uppercase tracking-wider">Live preview</p>
+                <p className="text-gray-600 text-xs mt-0.5">OTP arriving in real-time</p>
+              </div>
             </div>
           </div>
         </div>
@@ -285,6 +375,97 @@ export default function Landing() {
                 <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── WHY WHATSAPP (Light Trust) ─── */}
+      <section className="py-20 md:py-28 bg-white">
+        <div className="container mx-auto max-w-7xl px-4 md:px-6">
+          <div className="flex flex-col lg:flex-row items-center gap-16">
+            {/* Left — copy + stats */}
+            <div className="flex-1 max-w-xl">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="flex -space-x-2">
+                  {["#F59E0B", "#3B82F6", "#EC4899", "#8B5CF6"].map((c) => (
+                    <div key={c} className="w-8 h-8 rounded-full border-2 border-white" style={{ background: c }} />
+                  ))}
+                </div>
+                <span className="text-sm text-gray-500 ml-1"><strong className="text-gray-900">500+</strong> Nigerian developers trust WhatOTP</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight mb-4">
+                Send OTPs your users{" "}
+                <span style={{ color: "#25D366" }}>actually see</span>
+              </h2>
+              <p className="text-gray-500 text-lg leading-relaxed mb-8">
+                WhatsApp open rates are <strong className="text-gray-800">98%</strong>. SMS is 20%. Stop losing signups to unread verification codes — switch to where your users already are.
+              </p>
+              <div className="grid grid-cols-3 gap-4 mb-8">
+                {[
+                  { value: "98%", label: "Open rate", sub: "vs 20% for SMS", highlight: true },
+                  { value: "< 2s", label: "Delivery", sub: "avg response time", highlight: false },
+                  { value: "10×", label: "Cheaper", sub: "than SMS per OTP", highlight: false },
+                ].map(({ value, label, sub, highlight }) => (
+                  <div key={label} className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+                    <div className="text-2xl font-extrabold" style={{ color: highlight ? "#25D366" : "#111827" }}>{value}</div>
+                    <div className="text-xs font-semibold text-gray-700 mt-0.5">{label}</div>
+                    <div className="text-xs text-gray-400">{sub}</div>
+                  </div>
+                ))}
+              </div>
+              <Link href="/register">
+                <Button size="lg" className="text-white font-semibold px-7" style={{ background: "linear-gradient(135deg,#25D366,#128C7E)" }}>
+                  Get started free →
+                </Button>
+              </Link>
+            </div>
+
+            {/* Right — WhatsApp chat mockup */}
+            <div className="flex-shrink-0 w-full max-w-sm">
+              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
+                <div className="flex items-center gap-3 px-4 py-3.5" style={{ background: "#075E54" }}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm text-white flex-shrink-0" style={{ background: "#25D366" }}>F</div>
+                  <div>
+                    <div className="text-white font-semibold text-sm">FlutterPay</div>
+                    <div className="text-xs flex items-center gap-1" style={{ color: "#a7f3d0" }}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-300" />
+                      Verified Business ✓
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 space-y-3 min-h-[220px]" style={{ background: "#ECE5DD" }}>
+                  <div className="flex justify-start">
+                    <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3 max-w-[260px] shadow-sm">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "#e6f4ea" }}>
+                          <span className="text-[8px] font-bold" style={{ color: "#075E54" }}>F</span>
+                        </div>
+                        <span className="text-xs font-semibold" style={{ color: "#075E54" }}>FlutterPay</span>
+                        <Check className="w-3 h-3 text-green-500" />
+                      </div>
+                      <p className="text-sm text-gray-800 leading-relaxed">
+                        Hi Amaka! Your FlutterPay code is:<br />
+                        <span className="font-bold text-base tracking-widest">🔐 592 847</span><br />
+                        <span className="text-gray-500 text-xs">Expires in 10 minutes. Do not share.</span>
+                      </p>
+                      <p className="text-[10px] text-right text-gray-400 mt-1">just now</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <div className="rounded-2xl rounded-tr-none px-4 py-3 max-w-[200px] shadow-sm" style={{ background: "#25D366" }}>
+                      <p className="text-sm text-white">Got it, entering now! 👍</p>
+                      <p className="text-[10px] text-right mt-1" style={{ color: "#d1fae5" }}>just now ✓✓</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-3 py-3 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
+                  <div className="flex-1 bg-white rounded-full px-4 py-2 text-xs text-gray-400 border border-gray-200">Type a message</div>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#25D366" }}>
+                    <svg className="w-4 h-4 text-white fill-current" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
