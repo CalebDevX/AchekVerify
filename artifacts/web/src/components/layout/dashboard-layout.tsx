@@ -33,7 +33,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="hidden w-64 flex-col border-r bg-background md:flex">
         <div className="flex h-16 items-center px-6 border-b">
           <KeyRound className="h-6 w-6 text-primary mr-2" />
-          <span className="text-lg font-bold">WhatOTP</span>
+          <span className="text-lg font-bold">AchekOTP</span>
         </div>
         <nav className="flex-1 space-y-1 p-4">
           {navigation.map((item) => {
@@ -84,7 +84,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <header className="flex h-16 items-center justify-between border-b bg-background px-6 md:hidden">
           <div className="flex items-center">
             <KeyRound className="h-6 w-6 text-primary mr-2" />
-            <span className="text-lg font-bold">WhatOTP</span>
+            <span className="text-lg font-bold">AchekOTP</span>
           </div>
           <Button variant="ghost" size="icon" onClick={logout} data-testid="button-mobile-logout">
             <LogOut className="h-5 w-5 text-muted-foreground" />

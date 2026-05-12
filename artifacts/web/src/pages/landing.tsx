@@ -157,7 +157,7 @@ const FAQS = [
   },
   {
     q: "How does the Free plan work?",
-    a: 'The Free plan gives you 10 OTPs per month to try the API. Messages will include "via WhatOTP" branding. When you are ready to go live or need more volume, upgrade to any paid plan.',
+    a: 'The Free plan gives you 10 OTPs per month to try the API. Messages will include "via AchekOTP" branding. When you are ready to go live or need more volume, upgrade to any paid plan.',
   },
   {
     q: "How is billing handled?",
@@ -216,7 +216,7 @@ function AnimatedPhone() {
           <div className="w-7 h-7 rounded-full bg-emerald-400 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">K</div>
           <div>
             <div className="text-white text-[10px] font-semibold leading-tight">Kuda Bank</div>
-            <div className="text-emerald-200 text-[8px]">via WhatOTP</div>
+            <div className="text-emerald-200 text-[8px]">via AchekOTP</div>
           </div>
         </div>
         <div className="flex-1 bg-[#0b1a10] px-2.5 py-3 space-y-2 overflow-hidden">
@@ -340,7 +340,7 @@ export default function Landing() {
         <div className="container mx-auto max-w-7xl px-4 md:px-6">
           <div className="text-center mb-16">
             <p className="text-emerald-600 font-semibold text-sm uppercase tracking-wider mb-3">Setup in under 5 minutes</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">How WhatOTP works</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">How AchekOTP works</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-6 relative">
             <div className="hidden md:block absolute top-12 left-[calc(33%+1rem)] right-[calc(33%+1rem)] h-px bg-gradient-to-r from-emerald-200 via-emerald-300 to-emerald-200" />
@@ -391,7 +391,7 @@ export default function Landing() {
                     <div key={c} className="w-8 h-8 rounded-full border-2 border-white" style={{ background: c }} />
                   ))}
                 </div>
-                <span className="text-sm text-gray-500 ml-1"><strong className="text-gray-900">500+</strong> Nigerian developers trust WhatOTP</span>
+                <span className="text-sm text-gray-500 ml-1"><strong className="text-gray-900">500+</strong> Nigerian developers trust AchekOTP</span>
               </div>
               <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight mb-4">
                 Send OTPs your users{" "}

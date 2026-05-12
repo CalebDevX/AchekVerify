@@ -12,14 +12,14 @@ export function MainLayout({ children }: { children: ReactNode }) {
         <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6 max-w-7xl">
           <Link href="/">
             <div className="flex items-center gap-2.5 cursor-pointer">
-              <img src="/logo.svg" alt="WhatOTP" className="h-9 w-9" />
-              <span className="text-xl font-bold tracking-tight text-gray-900">WhatOTP</span>
+              <img src="/logo.svg" alt="AchekOTP" className="h-9 w-9" />
+              <span className="text-xl font-bold tracking-tight text-gray-900">AchekOTP</span>
             </div>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
             <a href="#how-it-works" className="hover:text-gray-900 transition-colors">How it works</a>
             <a href="#pricing" className="hover:text-gray-900 transition-colors">Pricing</a>
-            <a href="#integrate" className="hover:text-gray-900 transition-colors">Docs</a>
+            <Link href="/docs" className="hover:text-gray-900 transition-colors">Docs</Link>
           </nav>
           <div className="flex items-center gap-3">
             {user ? (
@@ -45,8 +45,8 @@ export function MainLayout({ children }: { children: ReactNode }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                <img src="/logo.svg" alt="WhatOTP" className="h-8 w-8" />
-                <span className="font-bold text-white text-lg">WhatOTP</span>
+                <img src="/logo.svg" alt="AchekOTP" className="h-8 w-8" />
+                <span className="font-bold text-white text-lg">AchekOTP</span>
               </div>
               <p className="text-sm leading-relaxed">
                 Nigeria's most reliable WhatsApp OTP verification API. Built for developers, trusted by businesses.
@@ -57,15 +57,15 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <ul className="space-y-2 text-sm">
                 <li><a href="#how-it-works" className="hover:text-white transition-colors">How it works</a></li>
                 <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="#integrate" className="hover:text-white transition-colors">API Docs</a></li>
+                <li><Link href="/docs" className="hover:text-white transition-colors">API Docs</Link></li>
               </ul>
             </div>
             <div>
-              <p className="font-semibold text-white mb-3 text-sm">Company</p>
+              <p className="font-semibold text-white mb-3 text-sm">Developers</p>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+                <li><Link href="/docs" className="hover:text-white transition-colors">Documentation</Link></li>
+                <li><a href="/api/docs" className="hover:text-white transition-colors">API Explorer</a></li>
+                <li><a href="/api/openapi.json" className="hover:text-white transition-colors">OpenAPI Spec</a></li>
               </ul>
             </div>
             <div>
@@ -77,7 +77,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm">&copy; {new Date().getFullYear()} WhatOTP. All rights reserved.</p>
+            <p className="text-sm">&copy; {new Date().getFullYear()} AchekOTP by <a href="https://achek.com.ng" className="hover:text-white">Achek</a>. All rights reserved.</p>
             <p className="text-sm">Made in Nigeria 🇳🇬</p>
           </div>
         </div>

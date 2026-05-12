@@ -31,7 +31,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       <div className="hidden w-64 flex-col border-r bg-background md:flex">
         <div className="flex h-16 items-center px-6 border-b">
           <div className="flex flex-col">
-            <span className="text-lg font-bold text-foreground">WhatOTP</span>
+            <span className="text-lg font-bold text-foreground">AchekOTP</span>
             <span className="text-xs font-semibold text-destructive">Admin Portal</span>
           </div>
         </div>

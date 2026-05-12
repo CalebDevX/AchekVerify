@@ -1,7 +1,7 @@
 import { db, plansTable, usersTable } from "./index";
 import { eq } from "drizzle-orm";
 
-// Pre-hashed bcrypt hash for "Admin@1234" (cost 12) — avoids bcryptjs dependency in db package
+// Pre-hashed bcrypt hash for "Admin@1234" (cost 12)
 const ADMIN_PASSWORD_HASH = "$2b$12$xxQhe5Bm/Smq8FvdsjoiTusBzj.vSgQVsJmAK8qD1mmZdweKT6gd6";
 
 async function seed() {
@@ -22,7 +22,7 @@ async function seed() {
       allowUsaNumbers: false,
       features: [
         "10 OTPs per month",
-        "WhatOTP branding on messages",
+        "AchekOTP branding on messages",
         "1 API key",
         "Nigerian numbers only",
         "Community support",
@@ -106,8 +106,8 @@ async function seed() {
 
   console.log("Done. 5 plans (Free + 4 NGN paid) seeded.");
 
-  // Seed admin user
-  const adminEmail = "admin@whatatp.com";
+  // ── Admin: admin@acheckotp.com ────────────────────────────────────────────
+  const adminEmail = "admin@acheckotp.com";
   const [existingAdmin] = await db.select().from(usersTable).where(eq(usersTable.email, adminEmail)).limit(1);
   if (!existingAdmin) {
     await db.insert(usersTable).values({
@@ -118,13 +118,30 @@ async function seed() {
       suspended: false,
       phoneVerified: true,
     });
-    console.log("Admin user created: admin@whatatp.com / Admin@1234");
+    console.log(`Admin user created: ${adminEmail} / Admin@1234`);
   } else {
     console.log("Admin user already exists, skipping.");
   }
 
-  // Seed demo user
-  const demoEmail = "demo@whatatp.com";
+  // ── Admin: calebosky ──────────────────────────────────────────────────────
+  const caleboEmail = "calebosky@acheckotp.com";
+  const [existingCalebo] = await db.select().from(usersTable).where(eq(usersTable.email, caleboEmail)).limit(1);
+  if (!existingCalebo) {
+    await db.insert(usersTable).values({
+      email: caleboEmail,
+      passwordHash: ADMIN_PASSWORD_HASH,
+      name: "Calebosky",
+      role: "admin",
+      suspended: false,
+      phoneVerified: true,
+    });
+    console.log(`Admin user created: ${caleboEmail} / Admin@1234`);
+  } else {
+    console.log("Calebosky admin already exists, skipping.");
+  }
+
+  // ── Demo user ─────────────────────────────────────────────────────────────
+  const demoEmail = "demo@acheckotp.com";
   const [existingDemo] = await db.select().from(usersTable).where(eq(usersTable.email, demoEmail)).limit(1);
   if (!existingDemo) {
     await db.insert(usersTable).values({
@@ -135,7 +152,7 @@ async function seed() {
       suspended: false,
       phoneVerified: false,
     });
-    console.log("Demo user created: demo@whatatp.com / Admin@1234");
+    console.log(`Demo user created: ${demoEmail} / Admin@1234`);
   } else {
     console.log("Demo user already exists, skipping.");
   }

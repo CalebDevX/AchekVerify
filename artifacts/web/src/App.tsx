@@ -10,6 +10,7 @@ import { AdminLayout } from "@/components/layout/admin-layout";
 
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import DocsPage from "@/pages/docs-page";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import Dashboard from "@/pages/dashboard/index";
@@ -48,6 +49,9 @@ function Router() {
         <MainLayout>
           <Register />
         </MainLayout>
+      </Route>
+      <Route path="/docs">
+        <DocsPage />
       </Route>
 
       {/* User Dashboard Routes */}

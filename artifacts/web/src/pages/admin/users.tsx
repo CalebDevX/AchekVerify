@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Shield, ShieldAlert, MoreHorizontal, CreditCard, Loader2 } from "lucide-react";
+import { Shield, ShieldAlert, MoreHorizontal, CreditCard, Loader2, Trash2, ShieldCheck, ShieldX } from "lucide-react";
 import {
   useListUsers,
   getListUsersQueryKey,
@@ -31,6 +31,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface UserRow {
   id: number;
@@ -70,10 +80,7 @@ function AssignPlanDialog({
     try {
       const res = await fetch(`/api/admin/users/${user.id}/assign-plan`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ planId }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -120,27 +127,92 @@ function AssignPlanDialog({
                   <div>
                     <p className="font-semibold text-sm text-gray-900">
                       {plan.name}
-                      {isCurrent && (
-                        <span className="ml-2 text-xs text-emerald-600 font-normal">Current plan</span>
-                      )}
+                      {isCurrent && <span className="ml-2 text-xs text-emerald-600 font-normal">Current plan</span>}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
                       {plan.otpLimit.toLocaleString()} OTPs/month ·{" "}
                       {plan.price === 0 ? "Free" : `₦${plan.price.toLocaleString("en-NG")}/mo`}
                     </p>
                   </div>
-                  {loading && !isCurrent && (
-                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                  )}
+                  {loading && !isCurrent && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
                 </button>
               );
             })
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancel
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ChangeRoleDialog({
+  user,
+  open,
+  onOpenChange,
+  onSuccess,
+}: {
+  user: UserRow | null;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSuccess: () => void;
+}) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const token = localStorage.getItem("whatotp_token");
+
+  const changeRole = async (role: string) => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/role`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ role }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast({ title: "Role Updated", description: `${user.name} is now a ${role}.` });
+      onOpenChange(false);
+      onSuccess();
+    } catch {
+      toast({ variant: "destructive", title: "Failed", description: "Could not update role." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Change Role — {user?.name}</DialogTitle>
+          <DialogDescription>Select a new role for this user.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 py-2">
+          {["user", "admin"].map((role) => {
+            const isCurrent = user?.role === role;
+            return (
+              <button
+                key={role}
+                disabled={loading || isCurrent}
+                onClick={() => changeRole(role)}
+                className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all disabled:opacity-60 capitalize ${
+                  isCurrent ? "border-emerald-500 bg-emerald-50" : "border-gray-200 hover:border-emerald-400 hover:bg-gray-50"
+                }`}
+              >
+                {role === "admin" ? <ShieldCheck className="h-4 w-4 text-red-500" /> : <Shield className="h-4 w-4 text-blue-500" />}
+                <div>
+                  <p className="font-semibold text-sm capitalize">{role} {isCurrent && <span className="text-xs text-emerald-600 font-normal ml-1">Current</span>}</p>
+                  <p className="text-xs text-gray-500">{role === "admin" ? "Full access to admin panel" : "Standard account access"}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -151,9 +223,13 @@ export default function AdminUsers() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [planDialogUser, setPlanDialogUser] = useState<UserRow | null>(null);
+  const [roleDialogUser, setRoleDialogUser] = useState<UserRow | null>(null);
+  const [deleteUser, setDeleteUser] = useState<UserRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const { data: users, isLoading } = useListUsers({ limit: 100 });
   const suspendMutation = useSuspendUser();
+  const token = localStorage.getItem("whatotp_token");
 
   const handleToggleSuspend = async (id: number) => {
     try {
@@ -165,11 +241,35 @@ export default function AdminUsers() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteUser) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/users/${deleteUser.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete user");
+      }
+      queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+      toast({ title: "User Deleted", description: `${deleteUser.email} has been permanently removed.` });
+      setDeleteUser(null);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Delete Failed", description: e.message || "Please try again." });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Users</h1>
-        <p className="text-muted-foreground mt-1">Manage customer accounts, plans, and subscriptions.</p>
+        <p className="text-muted-foreground mt-1">Manage customer accounts, plans, subscriptions, and roles.</p>
       </div>
 
       <Card>
@@ -213,13 +313,7 @@ export default function AdminUsers() {
                       {user.subscription?.plan ? (
                         <div className="flex flex-col">
                           <span className="font-medium text-sm">{user.subscription.plan.name}</span>
-                          <span
-                            className={
-                              user.subscription.status === "active"
-                                ? "text-primary text-xs"
-                                : "text-muted-foreground text-xs"
-                            }
-                          >
+                          <span className={user.subscription.status === "active" ? "text-primary text-xs" : "text-muted-foreground text-xs"}>
                             {user.subscription.status}
                           </span>
                         </div>
@@ -254,21 +348,28 @@ export default function AdminUsers() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Account Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="flex items-center gap-2"
-                            onClick={() => setPlanDialogUser(user)}
-                          >
-                            <CreditCard className="h-4 w-4" />
-                            Change Plan
+                          <DropdownMenuItem className="flex items-center gap-2" onClick={() => setPlanDialogUser(user)}>
+                            <CreditCard className="h-4 w-4" /> Change Plan
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="flex items-center gap-2" onClick={() => setRoleDialogUser(user)}>
+                            {user.role === "admin" ? <ShieldX className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                            Change Role
                           </DropdownMenuItem>
                           {user.role !== "admin" && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                                className={user.suspended ? "text-primary" : "text-destructive"}
+                                className={user.suspended ? "text-primary" : "text-orange-600"}
                                 onClick={() => handleToggleSuspend(user.id)}
                               >
                                 {user.suspended ? "Restore Access" : "Suspend Account"}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive flex items-center gap-2"
+                                onClick={() => setDeleteUser(user)}
+                              >
+                                <Trash2 className="h-4 w-4" /> Delete User
                               </DropdownMenuItem>
                             </>
                           )}
@@ -285,12 +386,33 @@ export default function AdminUsers() {
         </CardContent>
       </Card>
 
-      <AssignPlanDialog
-        user={planDialogUser}
-        open={!!planDialogUser}
-        onOpenChange={(v) => !v && setPlanDialogUser(null)}
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() })}
-      />
+      <AssignPlanDialog user={planDialogUser} open={!!planDialogUser} onOpenChange={(v) => !v && setPlanDialogUser(null)} onSuccess={refresh} />
+      <ChangeRoleDialog user={roleDialogUser} open={!!roleDialogUser} onOpenChange={(v) => !v && setRoleDialogUser(null)} onSuccess={refresh} />
+
+      <AlertDialog open={!!deleteUser} onOpenChange={(v) => !v && setDeleteUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" /> Permanently Delete User?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{deleteUser?.name}</strong> ({deleteUser?.email}) and all their data —
+              subscriptions, API keys, WhatsApp numbers, and OTP logs. <br /><br />
+              <span className="font-semibold text-destructive">This action cannot be undone.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Deleting...</> : "Delete Permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

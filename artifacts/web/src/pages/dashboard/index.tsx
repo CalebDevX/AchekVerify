@@ -1,18 +1,93 @@
-import { useGetDashboardStats } from "@workspace/api-client-react";
+import { useGetDashboardStats, useGetCurrentSubscription, useListPlans } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Clock, Send, XCircle, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, Clock, Send, XCircle, AlertCircle, Zap, ArrowRight, Lock } from "lucide-react";
 import { format } from "date-fns";
+import { Link } from "wouter";
+
+function FreemiumBanner({ remainingOtps, planName }: { remainingOtps: number; planName?: string }) {
+  const isFree = planName === "Free" || !planName;
+  const isNearLimit = remainingOtps <= 3 && remainingOtps > 0;
+  const isAtLimit = remainingOtps === 0;
+
+  if (!isFree && !isNearLimit && !isAtLimit) return null;
+
+  if (isAtLimit) {
+    return (
+      <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
+        <div className="flex items-start gap-3">
+          <Lock className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-destructive text-sm">OTP limit reached</p>
+            <p className="text-sm text-muted-foreground">You've used all your OTPs for this billing period. Upgrade to keep sending.</p>
+          </div>
+        </div>
+        <Link href="/dashboard/subscription">
+          <Button size="sm" className="bg-destructive text-white hover:bg-destructive/90 flex-shrink-0">
+            Upgrade Now <ArrowRight className="h-4 w-4 ml-1" />
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (isNearLimit) {
+    return (
+      <div className="rounded-xl border border-orange-300/60 bg-orange-50 p-4 flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-orange-700 text-sm">Only {remainingOtps} OTP{remainingOtps !== 1 ? "s" : ""} left this month</p>
+            <p className="text-sm text-orange-600/80">Upgrade to avoid interruptions and get access to more features.</p>
+          </div>
+        </div>
+        <Link href="/dashboard/subscription">
+          <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100 flex-shrink-0">
+            Upgrade Plan <ArrowRight className="h-4 w-4 ml-1" />
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (isFree) {
+    return (
+      <div className="rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-4 flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
+        <div className="flex items-start gap-3">
+          <Zap className="h-5 w-5 text-emerald-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-emerald-800 text-sm">You're on the Free plan · {remainingOtps} OTP{remainingOtps !== 1 ? "s" : ""} remaining</p>
+            <p className="text-sm text-emerald-700/80">
+              Free messages include "AchekOTP" branding. Upgrade to remove it, get 500+ OTPs/month, and unlock analytics.
+            </p>
+          </div>
+        </div>
+        <Link href="/dashboard/subscription">
+          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-shrink-0">
+            View Plans <ArrowRight className="h-4 w-4 ml-1" />
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  return null;
+}
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useGetDashboardStats();
+  const { data: sub } = useGetCurrentSubscription();
+  const { data: plans } = useListPlans();
+
+  const currentPlan = plans?.find((p) => p.id === (sub as any)?.planId);
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
@@ -28,9 +103,7 @@ export default function Dashboard() {
           ))}
         </div>
         <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Recent Activity</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
@@ -51,22 +124,20 @@ export default function Dashboard() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'verified': return <CheckCircle2 className="h-4 w-4 text-primary" />;
-      case 'sent': return <Send className="h-4 w-4 text-blue-500" />;
-      case 'failed': return <XCircle className="h-4 w-4 text-destructive" />;
-      case 'expired': return <AlertCircle className="h-4 w-4 text-orange-500" />;
-      case 'pending': return <Clock className="h-4 w-4 text-muted-foreground" />;
+      case "verified": return <CheckCircle2 className="h-4 w-4 text-primary" />;
+      case "sent": return <Send className="h-4 w-4 text-blue-500" />;
+      case "failed": return <XCircle className="h-4 w-4 text-destructive" />;
+      case "expired": return <AlertCircle className="h-4 w-4 text-orange-500" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'verified': return <Badge variant="default" className="bg-primary hover:bg-primary/90">Verified</Badge>;
-      case 'sent': return <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Sent</Badge>;
-      case 'failed': return <Badge variant="destructive">Failed</Badge>;
-      case 'expired': return <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-900">Expired</Badge>;
-      case 'pending': return <Badge variant="secondary">Pending</Badge>;
+      case "verified": return <Badge variant="default" className="bg-primary hover:bg-primary/90">Verified</Badge>;
+      case "sent": return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Sent</Badge>;
+      case "failed": return <Badge variant="destructive">Failed</Badge>;
+      case "expired": return <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50">Expired</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
     }
   };
@@ -80,6 +151,11 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <FreemiumBanner
+        remainingOtps={stats?.remainingOtps ?? 0}
+        planName={currentPlan?.name}
+      />
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -88,20 +164,22 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.otpSentToday?.toLocaleString() || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Messages successfully delivered
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Messages successfully delivered</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={stats?.remainingOtps === 0 ? "border-destructive/40 bg-destructive/5" : ""}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Remaining OTPs</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            <AlertCircle className={`h-4 w-4 ${stats?.remainingOtps === 0 ? "text-destructive" : "text-muted-foreground"}`} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.remainingOtps?.toLocaleString() || 0}</div>
+            <div className={`text-2xl font-bold ${stats?.remainingOtps === 0 ? "text-destructive" : ""}`}>
+              {stats?.remainingOtps?.toLocaleString() || 0}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              In your current billing cycle
+              {stats?.remainingOtps === 0 ? (
+                <Link href="/dashboard/subscription"><span className="text-destructive underline cursor-pointer">Upgrade to continue sending</span></Link>
+              ) : "In your current billing cycle"}
             </p>
           </CardContent>
         </Card>
@@ -112,9 +190,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.otpSuccessRate || 0}%</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Verification conversion rate
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Verification conversion rate</p>
           </CardContent>
         </Card>
         <Card>
@@ -124,9 +200,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.activeApiKeys || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Keys with traffic in last 24h
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Keys with traffic in last 24h</p>
           </CardContent>
         </Card>
       </div>
@@ -134,9 +208,7 @@ export default function Dashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Recent OTP Activity</CardTitle>
-          <CardDescription>
-            The latest verification requests from your users.
-          </CardDescription>
+          <CardDescription>The latest verification requests from your users.</CardDescription>
         </CardHeader>
         <CardContent>
           {stats?.recentActivity && stats.recentActivity.length > 0 ? (
@@ -167,7 +239,12 @@ export default function Dashboard() {
             </Table>
           ) : (
             <div className="text-center py-10 text-muted-foreground">
-              No recent activity found. Start by sending an OTP using your API key.
+              <Send className="h-8 w-8 mx-auto mb-3 opacity-20" />
+              <p className="font-medium">No activity yet</p>
+              <p className="text-xs mt-1">Send your first OTP using your API key to see activity here.</p>
+              <Link href="/dashboard/api-keys">
+                <Button size="sm" variant="outline" className="mt-4">Get API Key</Button>
+              </Link>
             </div>
           )}
         </CardContent>

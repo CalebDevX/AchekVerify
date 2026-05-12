@@ -67,7 +67,7 @@ export default function Login() {
               <KeyRound className="h-6 w-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Log in to WhatOTP</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">Log in to AchekOTP</CardTitle>
           <CardDescription>
             Enter your email and password to access your dashboard.
           </CardDescription>
