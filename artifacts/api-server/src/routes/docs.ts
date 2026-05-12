@@ -8,10 +8,10 @@ router.get("/openapi.json", (_req, res) => {
   const spec = {
     openapi: "3.0.3",
     info: {
-      title: "WhatOTP API",
+      title: "AchekOTP API",
       version: "1.0.0",
       description: "WhatsApp-powered OTP delivery engine. Send and verify one-time passwords via WhatsApp.",
-      contact: { name: "WhatOTP Support" },
+      contact: { name: "AchekOTP Support" },
     },
     servers: [{ url: "/api", description: "API base path" }],
     components: {
@@ -211,7 +211,7 @@ router.get("/openapi.json", (_req, res) => {
                   required: ["phoneNumber"],
                   properties: {
                     phoneNumber: { type: "string", description: "Destination in E.164 format", example: "+2348012345678" },
-                    template: { type: "string", description: "Custom message. Use {{code}} as placeholder. Default: 'Your WhatOTP verification code is: *{{code}}*'", example: "Your login code is {{code}}. Valid 10 minutes." },
+                    template: { type: "string", description: "Custom message. Use {{code}} as placeholder. Default: 'Your AchekOTP verification code is: *{{code}}*'", example: "Your login code is {{code}}. Valid 10 minutes." },
                     senderNumberId: { type: "integer", description: "ID of a specific WhatsApp sender to use (must belong to you or be a pool number)" },
                   },
                 },
@@ -553,7 +553,7 @@ router.get("/docs", (_req, res) => {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WhatOTP API Docs</title>
+  <title>AchekOTP API Docs</title>
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
   <style>
     * { box-sizing: border-box; }
@@ -567,7 +567,7 @@ router.get("/docs", (_req, res) => {
 <body>
   <div class="topbar">
     <span>💬</span>
-    <h1>WhatOTP API Documentation</h1>
+    <h1>AchekOTP API Documentation</h1>
   </div>
   <div id="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>

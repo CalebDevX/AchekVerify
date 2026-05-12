@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, Copy, ChevronRight, Terminal, Shield, Zap, AlertCircle, Globe, BookOpen, Code2, Key, RefreshCw, Lock } from "lucide-react";
 
-const BASE = "https://verify.achek.com.ng/api";
+const BASE = typeof window !== "undefined"
+  ? `${window.location.protocol}//${window.location.host}/api`
+  : "https://verify.achek.com.ng/api";
 
 const NAV = [
   { id: "overview", label: "Overview" },

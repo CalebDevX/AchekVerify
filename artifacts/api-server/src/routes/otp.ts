@@ -110,9 +110,26 @@ router.post("/otp/send", requireApiKey, async (req: AuthRequest, res) => {
   const requestId = generateRequestId();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
+  // Custom templates are only available on Growth, Business, Enterprise plans
+  const CUSTOM_TEMPLATE_PLANS = ["Growth", "Business", "Enterprise"];
+  const canUseCustomTemplate = plan && CUSTOM_TEMPLATE_PLANS.includes(plan.name);
+
+  if (template && !canUseCustomTemplate) {
+    return res.status(403).json({
+      error: `Custom message templates are available on Growth, Business, and Enterprise plans. Your current plan is ${plan?.name || "Free"}.`,
+    });
+  }
+
+  // Replace template variables: {{code}}, {{name}} (user-supplied via body), {{company}}
+  const buildMessage = (tmpl: string) =>
+    tmpl
+      .replace(/\{\{code\}\}/g, code)
+      .replace(/\{\{name\}\}/g, req.body.recipientName || "")
+      .replace(/\{\{company\}\}/g, req.body.companyName || "");
+
   const otpMessage = template
-    ? template.replace("{{code}}", code)
-    : `Your WhatOTP verification code is: *${code}*\n\nValid for 10 minutes. Do not share this code with anyone.`;
+    ? buildMessage(template)
+    : `Your AchekOTP verification code is: *${code}*\n\nValid for 10 minutes. Do not share this code with anyone.`;
 
   // ── Send ───────────────────────────────────────────────────────────────────
   const result = await sendOtpMessage(phoneNumber, otpMessage, resolvedSender?.id);

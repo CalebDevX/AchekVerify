@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, whatsappNumbersTable } from "@workspace/db";
+import { db, usersTable, whatsappNumbersTable, plansTable, subscriptionsTable } from "@workspace/db";
 import { eq, isNull } from "drizzle-orm";
 import { signToken, requireAuth, type AuthRequest } from "../middlewares/auth";
 import { sendOtpMessage } from "../lib/baileys-manager";
@@ -59,6 +59,25 @@ router.post("/auth/register", async (req, res) => {
     phoneNumber: phoneNumber || null,
     phoneVerified: false,
   }).returning();
+
+  // Auto-assign Free plan subscription on registration
+  try {
+    const [freePlan] = await db.select().from(plansTable).where(eq(plansTable.name, "Free")).limit(1);
+    if (freePlan) {
+      const startDate = new Date();
+      const endDate = new Date(startDate);
+      endDate.setFullYear(endDate.getFullYear() + 100); // never expires for free plan
+      await db.insert(subscriptionsTable).values({
+        userId: user.id,
+        planId: freePlan.id,
+        status: "active",
+        startDate,
+        endDate,
+      });
+    }
+  } catch (_) {
+    // Non-fatal — user can still log in without a subscription
+  }
 
   const token = signToken(user.id);
   return res.status(201).json({ user: formatUserResponse(user), token });

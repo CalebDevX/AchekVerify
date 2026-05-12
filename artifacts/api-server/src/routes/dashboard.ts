@@ -29,9 +29,14 @@ router.get("/dashboard/stats", requireAuth, async (req: AuthRequest, res) => {
     .limit(1);
 
   let remainingOtps = 0;
+  let planName: string | null = null;
+  let hasSubscription = !!sub;
   if (sub) {
     const [plan] = await db.select().from(plansTable).where(eq(plansTable.id, sub.planId)).limit(1);
-    remainingOtps = plan ? Math.max(0, plan.otpLimit - sub.otpUsed) : 0;
+    if (plan) {
+      remainingOtps = Math.max(0, plan.otpLimit - sub.otpUsed);
+      planName = plan.name;
+    }
   }
 
   const [activeKeysResult] = await db.select({ count: count() }).from(apiKeysTable)
@@ -47,6 +52,8 @@ router.get("/dashboard/stats", requireAuth, async (req: AuthRequest, res) => {
     otpSentMonth: otpMonthResult?.count ?? 0,
     otpSuccessRate: successRate,
     remainingOtps,
+    planName,
+    hasSubscription,
     activeApiKeys: activeKeysResult?.count ?? 0,
     recentActivity: recentActivity.map(l => ({
       id: l.id,

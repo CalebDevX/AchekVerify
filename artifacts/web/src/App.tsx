@@ -18,6 +18,7 @@ import ApiKeys from "@/pages/dashboard/api-keys";
 import Subscription from "@/pages/dashboard/subscription";
 import Logs from "@/pages/dashboard/logs";
 import Docs from "@/pages/dashboard/docs";
+import Numbers from "@/pages/dashboard/numbers";
 import AdminDashboard from "@/pages/admin/index";
 import AdminNumbers from "@/pages/admin/numbers";
 import AdminUsers from "@/pages/admin/users";
@@ -87,6 +88,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Docs />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/numbers">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Numbers />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

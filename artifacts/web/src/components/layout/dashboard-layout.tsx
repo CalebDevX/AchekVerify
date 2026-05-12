@@ -8,7 +8,8 @@ import {
   List, 
   BookText, 
   LogOut,
-  Settings
+  Settings,
+  Smartphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -23,6 +24,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigation = [
     { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
     { name: "API Keys", href: "/dashboard/api-keys", icon: KeyRound },
+    { name: "Sender Numbers", href: "/dashboard/numbers", icon: Smartphone },
     { name: "Subscription", href: "/dashboard/subscription", icon: CreditCard },
     { name: "Logs", href: "/dashboard/logs", icon: List },
     { name: "Documentation", href: "/dashboard/docs", icon: BookText },

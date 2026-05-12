@@ -4,25 +4,55 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, Send, XCircle, AlertCircle, Zap, ArrowRight, Lock } from "lucide-react";
+import { CheckCircle2, Clock, Send, XCircle, AlertCircle, Zap, ArrowRight, Lock, CreditCard } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 
-function FreemiumBanner({ remainingOtps, planName }: { remainingOtps: number; planName?: string }) {
-  const isFree = planName === "Free" || !planName;
+type StatsData = {
+  otpSentToday: number;
+  otpSentMonth: number;
+  otpSuccessRate: number;
+  remainingOtps: number;
+  planName: string | null;
+  hasSubscription: boolean;
+  activeApiKeys: number;
+  recentActivity: any[];
+};
+
+function FreemiumBanner({ stats }: { stats: StatsData }) {
+  const { remainingOtps, planName, hasSubscription } = stats;
+
+  if (!hasSubscription) {
+    return (
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
+        <div className="flex items-start gap-3">
+          <CreditCard className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-blue-800 text-sm">Subscribe to start sending OTPs</p>
+            <p className="text-sm text-blue-700/80">Pick a plan to activate your account. The Free plan gives you 10 OTPs/month at no cost.</p>
+          </div>
+        </div>
+        <Link href="/dashboard/subscription">
+          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0">
+            Choose Plan <ArrowRight className="h-4 w-4 ml-1" />
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const isFree = planName === "Free";
   const isNearLimit = remainingOtps <= 3 && remainingOtps > 0;
   const isAtLimit = remainingOtps === 0;
 
-  if (!isFree && !isNearLimit && !isAtLimit) return null;
-
-  if (isAtLimit) {
+  if (isAtLimit && isFree) {
     return (
       <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
         <div className="flex items-start gap-3">
           <Lock className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
           <div>
-            <p className="font-semibold text-destructive text-sm">OTP limit reached</p>
-            <p className="text-sm text-muted-foreground">You've used all your OTPs for this billing period. Upgrade to keep sending.</p>
+            <p className="font-semibold text-destructive text-sm">Free plan OTP limit reached</p>
+            <p className="text-sm text-muted-foreground">You've used all 10 free OTPs this month. Upgrade to keep sending without limits.</p>
           </div>
         </div>
         <Link href="/dashboard/subscription">
@@ -40,8 +70,8 @@ function FreemiumBanner({ remainingOtps, planName }: { remainingOtps: number; pl
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
           <div>
-            <p className="font-semibold text-orange-700 text-sm">Only {remainingOtps} OTP{remainingOtps !== 1 ? "s" : ""} left this month</p>
-            <p className="text-sm text-orange-600/80">Upgrade to avoid interruptions and get access to more features.</p>
+            <p className="font-semibold text-orange-700 text-sm">Only {remainingOtps} OTP{remainingOtps !== 1 ? "s" : ""} remaining ({planName} plan)</p>
+            <p className="text-sm text-orange-600/80">Upgrade before you run out to avoid disrupting your users.</p>
           </div>
         </div>
         <Link href="/dashboard/subscription">
@@ -59,9 +89,9 @@ function FreemiumBanner({ remainingOtps, planName }: { remainingOtps: number; pl
         <div className="flex items-start gap-3">
           <Zap className="h-5 w-5 text-emerald-600 mt-0.5 flex-shrink-0" />
           <div>
-            <p className="font-semibold text-emerald-800 text-sm">You're on the Free plan · {remainingOtps} OTP{remainingOtps !== 1 ? "s" : ""} remaining</p>
+            <p className="font-semibold text-emerald-800 text-sm">Free plan · {remainingOtps} OTP{remainingOtps !== 1 ? "s" : ""} remaining this month</p>
             <p className="text-sm text-emerald-700/80">
-              Free messages include "AchekOTP" branding. Upgrade to remove it, get 500+ OTPs/month, and unlock analytics.
+              Free messages include "AchekOTP" branding. Upgrade to remove it, get 500+ OTPs/month, and unlock custom templates.
             </p>
           </div>
         </div>
@@ -79,10 +109,6 @@ function FreemiumBanner({ remainingOtps, planName }: { remainingOtps: number; pl
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useGetDashboardStats();
-  const { data: sub } = useGetCurrentSubscription();
-  const { data: plans } = useListPlans();
-
-  const currentPlan = plans?.find((p) => p.id === (sub as any)?.planId);
 
   if (isLoading) {
     return (
@@ -122,6 +148,8 @@ export default function Dashboard() {
     );
   }
 
+  const typedStats = stats as unknown as StatsData;
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "verified": return <CheckCircle2 className="h-4 w-4 text-primary" />;
@@ -142,6 +170,8 @@ export default function Dashboard() {
     }
   };
 
+  const isAtLimit = typedStats?.hasSubscription && typedStats?.remainingOtps === 0;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
@@ -151,10 +181,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <FreemiumBanner
-        remainingOtps={stats?.remainingOtps ?? 0}
-        planName={currentPlan?.name}
-      />
+      {typedStats && <FreemiumBanner stats={typedStats} />}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -163,23 +190,23 @@ export default function Dashboard() {
             <Send className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.otpSentToday?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold">{typedStats?.otpSentToday?.toLocaleString() || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Messages successfully delivered</p>
           </CardContent>
         </Card>
-        <Card className={stats?.remainingOtps === 0 ? "border-destructive/40 bg-destructive/5" : ""}>
+        <Card className={isAtLimit ? "border-destructive/40 bg-destructive/5" : ""}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Remaining OTPs</CardTitle>
-            <AlertCircle className={`h-4 w-4 ${stats?.remainingOtps === 0 ? "text-destructive" : "text-muted-foreground"}`} />
+            <AlertCircle className={`h-4 w-4 ${isAtLimit ? "text-destructive" : "text-muted-foreground"}`} />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${stats?.remainingOtps === 0 ? "text-destructive" : ""}`}>
-              {stats?.remainingOtps?.toLocaleString() || 0}
+            <div className={`text-2xl font-bold ${isAtLimit ? "text-destructive" : ""}`}>
+              {typedStats?.remainingOtps?.toLocaleString() || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {stats?.remainingOtps === 0 ? (
-                <Link href="/dashboard/subscription"><span className="text-destructive underline cursor-pointer">Upgrade to continue sending</span></Link>
-              ) : "In your current billing cycle"}
+              {isAtLimit ? (
+                <Link href="/dashboard/subscription"><span className="text-destructive underline cursor-pointer">Upgrade to keep sending</span></Link>
+              ) : `This billing cycle · ${typedStats?.planName || "No plan"}`}
             </p>
           </CardContent>
         </Card>
@@ -189,7 +216,7 @@ export default function Dashboard() {
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.otpSuccessRate || 0}%</div>
+            <div className="text-2xl font-bold">{typedStats?.otpSuccessRate || 0}%</div>
             <p className="text-xs text-muted-foreground mt-1">Verification conversion rate</p>
           </CardContent>
         </Card>
@@ -199,7 +226,7 @@ export default function Dashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeApiKeys || 0}</div>
+            <div className="text-2xl font-bold">{typedStats?.activeApiKeys || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Keys with traffic in last 24h</p>
           </CardContent>
         </Card>
@@ -211,7 +238,7 @@ export default function Dashboard() {
           <CardDescription>The latest verification requests from your users.</CardDescription>
         </CardHeader>
         <CardContent>
-          {stats?.recentActivity && stats.recentActivity.length > 0 ? (
+          {typedStats?.recentActivity && typedStats.recentActivity.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -221,7 +248,7 @@ export default function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stats.recentActivity.map((log) => (
+                {typedStats.recentActivity.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell className="font-medium">{log.phoneNumber}</TableCell>
                     <TableCell>
