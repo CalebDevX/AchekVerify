@@ -2,7 +2,7 @@ import { Router } from "express";
 import { randomBytes } from "crypto";
 import { db, otpRequestsTable, subscriptionsTable, plansTable, whatsappNumbersTable } from "@workspace/db";
 import { eq, and, isNull, sql } from "drizzle-orm";
-import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import { requireAuth, requireApiKey, type AuthRequest } from "../middlewares/auth";
 import { sendOtpMessage } from "../lib/baileys-manager";
 
 const router = Router();
@@ -15,12 +15,31 @@ function generateRequestId(): string {
   return `otp_${randomBytes(16).toString("hex")}`;
 }
 
-// Send OTP
-router.post("/otp/send", requireAuth, async (req: AuthRequest, res) => {
+function detectCountry(phoneNumber: string): string | null {
+  if (phoneNumber.startsWith("+1")) return "us";
+  if (phoneNumber.startsWith("+44")) return "uk";
+  if (phoneNumber.startsWith("+234")) return "ng";
+  return null;
+}
+
+// ─── Send OTP ─────────────────────────────────────────────────────────────────
+//
+// Body:
+//   phoneNumber   string   required   Destination phone number (E.164 format, e.g. +2348012345678)
+//   template      string   optional   Custom message with {{code}} placeholder
+//   senderNumberId number  optional   ID of a specific WhatsApp number to use as sender
+//                                     (must be a pool number or one owned by the calling user)
+//
+router.post("/otp/send", requireApiKey, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
-  const { phoneNumber, template } = req.body;
+  const { phoneNumber, template, senderNumberId } = req.body;
 
   if (!phoneNumber) return res.status(400).json({ error: "phoneNumber is required" });
+
+  // Validate E.164 format
+  if (!/^\+[1-9]\d{6,14}$/.test(phoneNumber)) {
+    return res.status(400).json({ error: "phoneNumber must be in E.164 format (e.g. +2348012345678)" });
+  }
 
   // Check active subscription
   const [sub] = await db
@@ -36,27 +55,57 @@ router.post("/otp/send", requireAuth, async (req: AuthRequest, res) => {
     return res.status(429).json({ error: "OTP limit reached for current billing period" });
   }
 
-  // Determine country from prefix
-  let country: string | null = null;
-  if (phoneNumber.startsWith("+1")) country = "us";
-  else if (phoneNumber.startsWith("+44")) country = "uk";
-  else if (phoneNumber.startsWith("+234")) country = "ng";
+  const country = detectCountry(phoneNumber);
 
-  // Find the user's custom number if they have one (preferred sender)
-  const [customNumber] = await db
-    .select()
-    .from(whatsappNumbersTable)
-    .where(eq(whatsappNumbersTable.ownerId, userId))
-    .limit(1);
+  // ── Resolve sender number ──────────────────────────────────────────────────
+  let resolvedSender: { id: number } | undefined;
 
-  // Also find best pool number for fallback
-  const poolNumbers = await db
-    .select()
-    .from(whatsappNumbersTable)
-    .where(isNull(whatsappNumbersTable.ownerId));
+  if (senderNumberId) {
+    // Caller specified a preferred sender — validate it
+    const [requested] = await db
+      .select()
+      .from(whatsappNumbersTable)
+      .where(eq(whatsappNumbersTable.id, senderNumberId))
+      .limit(1);
 
-  const connectedPool = poolNumbers.find(n => n.status === "connected" && n.sessionActive);
+    if (!requested) {
+      return res.status(400).json({ error: "senderNumberId not found" });
+    }
 
+    const isOwnedByUser = requested.ownerId === userId;
+    const isPoolNumber = requested.ownerId === null;
+
+    if (!isOwnedByUser && !isPoolNumber) {
+      return res.status(403).json({ error: "You do not have access to that sender number" });
+    }
+
+    if (requested.status !== "connected" || !requested.sessionActive) {
+      return res.status(422).json({ error: "The requested sender number is not connected" });
+    }
+
+    resolvedSender = { id: requested.id };
+  } else {
+    // Auto-select: prefer user's own number, fall back to pool
+    const [userNumber] = await db
+      .select()
+      .from(whatsappNumbersTable)
+      .where(and(eq(whatsappNumbersTable.ownerId, userId), eq(whatsappNumbersTable.status, "connected")))
+      .limit(1);
+
+    if (userNumber && userNumber.sessionActive) {
+      resolvedSender = { id: userNumber.id };
+    } else {
+      const poolNumbers = await db
+        .select()
+        .from(whatsappNumbersTable)
+        .where(isNull(whatsappNumbersTable.ownerId));
+
+      const connected = poolNumbers.find(n => n.status === "connected" && n.sessionActive);
+      if (connected) resolvedSender = { id: connected.id };
+    }
+  }
+
+  // ── Generate code + message ────────────────────────────────────────────────
   const code = generateOtpCode();
   const requestId = generateRequestId();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -65,44 +114,39 @@ router.post("/otp/send", requireAuth, async (req: AuthRequest, res) => {
     ? template.replace("{{code}}", code)
     : `Your WhatOTP verification code is: *${code}*\n\nValid for 10 minutes. Do not share this code with anyone.`;
 
-  // Try to send via Baileys — prefer user's custom number, fall back to pool
-  const result = await sendOtpMessage(
-    phoneNumber,
-    otpMessage,
-    customNumber?.id ?? connectedPool?.id,
-  );
+  // ── Send ───────────────────────────────────────────────────────────────────
+  const result = await sendOtpMessage(phoneNumber, otpMessage, resolvedSender?.id);
 
-  const senderNumberId = result.success ? result.numberId : (customNumber?.id ?? connectedPool?.id ?? null);
+  const senderNumberId_used = result.success ? result.numberId : (resolvedSender?.id ?? null);
   const status = result.success ? "sent" : "failed";
 
-  const [otpRequest] = await db.insert(otpRequestsTable).values({
+  await db.insert(otpRequestsTable).values({
     userId,
     requestId,
     phoneNumber,
     code,
     status,
     country,
-    whatsappNumberId: senderNumberId ?? null,
+    whatsappNumberId: senderNumberId_used ?? null,
     expiresAt,
-  }).returning();
+  });
 
   if (status === "sent") {
     await db.update(subscriptionsTable)
       .set({ otpUsed: sub.otpUsed + 1 })
       .where(eq(subscriptionsTable.id, sub.id));
 
-    if (senderNumberId) {
-      const senderNum = poolNumbers.find(n => n.id === senderNumberId) ?? customNumber;
-      if (senderNum) {
-        await db.update(whatsappNumbersTable)
-          .set({ otpSentCount: senderNum.otpSentCount + 1 })
-          .where(eq(whatsappNumbersTable.id, senderNumberId));
-      }
+    if (senderNumberId_used) {
+      await db.update(whatsappNumbersTable)
+        .set({ otpSentCount: sql`${whatsappNumbersTable.otpSentCount} + 1` })
+        .where(eq(whatsappNumbersTable.id, senderNumberId_used));
     }
   }
 
   if (status === "failed") {
-    return res.status(503).json({ error: "No WhatsApp numbers connected. Please link a number in the admin panel." });
+    return res.status(503).json({
+      error: "No WhatsApp numbers are connected. Please link a number in the admin panel.",
+    });
   }
 
   return res.json({
@@ -112,15 +156,16 @@ router.post("/otp/send", requireAuth, async (req: AuthRequest, res) => {
   });
 });
 
-// Verify OTP
-router.post("/otp/verify", requireAuth, async (req: AuthRequest, res) => {
+// ─── Verify OTP ───────────────────────────────────────────────────────────────
+
+router.post("/otp/verify", requireApiKey, async (req: AuthRequest, res) => {
   const { requestId, code } = req.body;
   if (!requestId || !code) return res.status(400).json({ error: "requestId and code are required" });
 
   const [otpRequest] = await db.select().from(otpRequestsTable)
     .where(eq(otpRequestsTable.requestId, requestId)).limit(1);
 
-  if (!otpRequest) return res.status(400).json({ error: "OTP request not found" });
+  if (!otpRequest) return res.status(404).json({ error: "OTP request not found" });
   if (otpRequest.status === "verified") return res.json({ valid: false, message: "OTP already used" });
   if (otpRequest.status === "expired" || new Date() > otpRequest.expiresAt) {
     await db.update(otpRequestsTable).set({ status: "expired" }).where(eq(otpRequestsTable.id, otpRequest.id));
@@ -132,20 +177,35 @@ router.post("/otp/verify", requireAuth, async (req: AuthRequest, res) => {
   return res.json({ valid: true, message: "OTP verified successfully" });
 });
 
-// OTP Logs
+// ─── OTP Logs ─────────────────────────────────────────────────────────────────
+
 router.get("/otp/logs", requireAuth, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
-  const limit = parseInt(req.query.limit as string) || 50;
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
   const offset = parseInt(req.query.offset as string) || 0;
+  const statusFilter = req.query.status as string | undefined;
+
+  const validStatuses = ["sent", "verified", "failed", "expired"];
+  const effectiveStatus = statusFilter && validStatuses.includes(statusFilter) ? statusFilter : undefined;
+
+  const baseWhere = effectiveStatus
+    ? and(eq(otpRequestsTable.userId, userId), eq(otpRequestsTable.status, effectiveStatus))
+    : eq(otpRequestsTable.userId, userId);
 
   const logs = await db.select().from(otpRequestsTable)
-    .where(eq(otpRequestsTable.userId, userId))
-    .limit(limit).offset(offset)
+    .where(baseWhere)
+    .limit(limit)
+    .offset(offset)
     .orderBy(sql`${otpRequestsTable.createdAt} DESC`);
 
   return res.json(logs.map(l => ({
-    id: l.id, phoneNumber: l.phoneNumber, status: l.status,
-    requestId: l.requestId, country: l.country, createdAt: l.createdAt,
+    id: l.id,
+    phoneNumber: l.phoneNumber,
+    status: l.status,
+    requestId: l.requestId,
+    country: l.country,
+    createdAt: l.createdAt,
+    expiresAt: l.expiresAt,
   })));
 });
 

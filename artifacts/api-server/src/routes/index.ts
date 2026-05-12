@@ -9,9 +9,11 @@ import otpRouter from "./otp";
 import adminUsersRouter from "./adminUsers";
 import dashboardRouter from "./dashboard";
 import paymentsRouter from "./payments";
+import docsRouter from "./docs";
 
 const router: IRouter = Router();
 
+router.use(docsRouter);
 router.use(healthRouter);
 router.use(authRouter);
 router.use(plansRouter);

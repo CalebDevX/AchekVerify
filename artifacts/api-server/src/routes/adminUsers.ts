@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { db, usersTable, subscriptionsTable, plansTable, otpRequestsTable } from "@workspace/db";
+import { db, usersTable, subscriptionsTable, plansTable, otpRequestsTable, apiKeysTable, whatsappNumbersTable } from "@workspace/db";
 import { eq, and, count } from "drizzle-orm";
 import { requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { stopSession } from "../lib/baileys-manager";
 
 const router = Router();
 
@@ -24,20 +25,24 @@ async function buildUserResponse(user: typeof usersTable.$inferSelect) {
     name: user.name,
     role: user.role,
     suspended: user.suspended,
+    phoneNumber: user.phoneNumber,
+    phoneVerified: user.phoneVerified,
     createdAt: user.createdAt,
     subscription: sub ? { ...sub, plan } : undefined,
     otpCount: otpCountResult?.count ?? 0,
   };
 }
 
+// List all users (with search/filter)
 router.get("/admin/users", requireAdmin, async (req, res) => {
-  const limit = parseInt(req.query.limit as string) || 50;
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
   const offset = parseInt(req.query.offset as string) || 0;
   const users = await db.select().from(usersTable).limit(limit).offset(offset);
   const usersWithData = await Promise.all(users.map(buildUserResponse));
   return res.json(usersWithData);
 });
 
+// Get single user
 router.get("/admin/users/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id as string);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
@@ -45,6 +50,7 @@ router.get("/admin/users/:id", requireAdmin, async (req, res) => {
   return res.json(await buildUserResponse(user));
 });
 
+// Suspend / unsuspend user
 router.post("/admin/users/:id/suspend", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id as string);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
@@ -65,6 +71,78 @@ router.post("/admin/users/:id/suspend", requireAdmin, async (req, res) => {
   });
 });
 
+// Change user role (user <-> admin)
+router.post("/admin/users/:id/role", requireAdmin, async (req: AuthRequest, res) => {
+  const adminId = req.user?.id;
+  const id = parseInt(req.params.id as string);
+  const { role } = req.body;
+
+  if (!role || !["user", "admin"].includes(role)) {
+    return res.status(400).json({ error: "role must be 'user' or 'admin'" });
+  }
+  if (adminId === id) {
+    return res.status(400).json({ error: "Cannot change your own role" });
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  const [updated] = await db.update(usersTable)
+    .set({ role })
+    .where(eq(usersTable.id, id))
+    .returning();
+
+  req.log.info({ userId: id, role, adminId }, "Admin changed user role");
+  return res.json({
+    id: updated.id,
+    email: updated.email,
+    name: updated.name,
+    role: updated.role,
+    suspended: updated.suspended,
+    createdAt: updated.createdAt,
+  });
+});
+
+// Delete user (permanently — cascades subscriptions, API keys, numbers, OTP logs)
+router.delete("/admin/users/:id", requireAdmin, async (req: AuthRequest, res) => {
+  const adminId = req.user?.id;
+  const id = parseInt(req.params.id as string);
+
+  if (adminId === id) {
+    return res.status(400).json({ error: "Cannot delete your own account" });
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  // Stop and remove user's WhatsApp sessions
+  const userNumbers = await db.select().from(whatsappNumbersTable).where(eq(whatsappNumbersTable.ownerId, id));
+  for (const num of userNumbers) {
+    await stopSession(num.id).catch(() => {});
+  }
+  await db.delete(whatsappNumbersTable).where(eq(whatsappNumbersTable.ownerId, id));
+
+  // Cancel subscriptions
+  await db.update(subscriptionsTable)
+    .set({ status: "cancelled" })
+    .where(eq(subscriptionsTable.userId, id));
+
+  // Revoke API keys
+  await db.update(apiKeysTable)
+    .set({ status: "revoked" })
+    .where(eq(apiKeysTable.userId, id));
+
+  // Delete OTP logs
+  await db.delete(otpRequestsTable).where(eq(otpRequestsTable.userId, id));
+
+  // Finally delete user
+  await db.delete(usersTable).where(eq(usersTable.id, id));
+
+  req.log.info({ userId: id, email: user.email, adminId }, "Admin deleted user");
+  return res.json({ success: true, message: `User ${user.email} deleted` });
+});
+
+// Assign plan to user
 router.post("/admin/users/:id/assign-plan", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id as string);
   const planId = typeof req.body.planId === "number" ? req.body.planId : parseInt(req.body.planId);
