@@ -6,3 +6,4 @@ export * from "./whatsappNumbers";
 export * from "./otpRequests";
 export * from "./botConfigs";
 export * from "./botConversations";
+export * from "./broadcasts";
