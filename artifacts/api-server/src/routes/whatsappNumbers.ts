@@ -37,6 +37,20 @@ function formatNumber(n: typeof whatsappNumbersTable.$inferSelect, includeSessio
   };
 }
 
+// ─── User-facing: pool numbers (no sensitive data) ───────────────────────────
+
+router.get("/whatsapp-numbers/pool", requireAuth, async (_req, res) => {
+  const poolNumbers = await db.select().from(whatsappNumbersTable).where(isNull(whatsappNumbersTable.ownerId));
+  return res.json(poolNumbers.map(n => ({
+    id: n.id,
+    label: n.label || `Pool Number ${n.id}`,
+    country: n.country,
+    status: getSessionState(n.id).status,
+    connected: getSessionState(n.id).connected,
+    otpSentCount: n.otpSentCount,
+  })));
+});
+
 // ─── Admin: shared pool numbers ───────────────────────────────────────────────
 
 router.get("/admin/whatsapp-numbers", requireAdmin, async (_req, res) => {

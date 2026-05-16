@@ -19,6 +19,7 @@ import Subscription from "@/pages/dashboard/subscription";
 import Logs from "@/pages/dashboard/logs";
 import Docs from "@/pages/dashboard/docs";
 import Numbers from "@/pages/dashboard/numbers";
+import BotPage from "@/pages/dashboard/bot";
 import AdminDashboard from "@/pages/admin/index";
 import AdminNumbers from "@/pages/admin/numbers";
 import AdminUsers from "@/pages/admin/users";
@@ -95,6 +96,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Numbers />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/bot">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <BotPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

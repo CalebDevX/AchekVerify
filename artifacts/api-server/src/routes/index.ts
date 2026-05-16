@@ -10,6 +10,7 @@ import adminUsersRouter from "./adminUsers";
 import dashboardRouter from "./dashboard";
 import paymentsRouter from "./payments";
 import docsRouter from "./docs";
+import botRouter from "./bot";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(otpRouter);
 router.use(adminUsersRouter);
 router.use(dashboardRouter);
 router.use(paymentsRouter);
+router.use(botRouter);
 
 export default router;

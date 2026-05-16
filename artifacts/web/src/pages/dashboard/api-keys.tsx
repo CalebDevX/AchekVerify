@@ -75,7 +75,13 @@ function CodeSnippet({ apiKey }: { apiKey: string }) {
   -H "Content-Type: application/json" \\
   -d '{"phoneNumber": "+2348012345678"}'`;
 
-  const jsSend = `const res = await fetch("${BASE_URL}/otp/send", {
+  const curlVerify = `curl -X POST ${BASE_URL}/otp/verify \\
+  -H "x-api-key: ${apiKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"requestId": "<requestId>", "code": "123456"}'`;
+
+  const jsSend = `// Send OTP
+const res = await fetch("${BASE_URL}/otp/send", {
   method: "POST",
   headers: {
     "x-api-key": "${apiKey}",
@@ -83,9 +89,10 @@ function CodeSnippet({ apiKey }: { apiKey: string }) {
   },
   body: JSON.stringify({ phoneNumber: "+2348012345678" }),
 });
-const { requestId } = await res.json();`;
+const { requestId } = await res.json();
 
-  const verifyJs = `const res = await fetch("${BASE_URL}/otp/verify", {
+// Verify OTP
+const verify = await fetch("${BASE_URL}/otp/verify", {
   method: "POST",
   headers: {
     "x-api-key": "${apiKey}",
@@ -93,25 +100,79 @@ const { requestId } = await res.json();`;
   },
   body: JSON.stringify({ requestId, code: userEnteredCode }),
 });
-const { valid } = await res.json();`;
+const { valid } = await verify.json();`;
+
+  const pythonCode = `import requests
+
+BASE_URL = "${BASE_URL}"
+API_KEY  = "${apiKey}"
+HEADERS  = {"x-api-key": API_KEY, "Content-Type": "application/json"}
+
+# Send OTP
+resp = requests.post(
+    f"{BASE_URL}/otp/send",
+    headers=HEADERS,
+    json={"phoneNumber": "+2348012345678"},
+)
+request_id = resp.json()["requestId"]
+
+# Verify OTP
+code = input("Enter OTP: ")
+result = requests.post(
+    f"{BASE_URL}/otp/verify",
+    headers=HEADERS,
+    json={"requestId": request_id, "code": code},
+)
+print("Valid:", result.json()["valid"])`;
+
+  const phpCode = `<?php
+$baseUrl = "${BASE_URL}";
+$apiKey  = "${apiKey}";
+
+function achekPost(string $url, array $body, string $key): array {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($body),
+        CURLOPT_HTTPHEADER     => [
+            "x-api-key: $key",
+            "Content-Type: application/json",
+        ],
+    ]);
+    $resp = curl_exec($ch);
+    curl_close($ch);
+    return json_decode($resp, true);
+}
+
+// Send OTP
+$send = achekPost("$baseUrl/otp/send", ["phoneNumber" => "+2348012345678"], $apiKey);
+$requestId = $send["requestId"];
+
+// Verify OTP
+$code   = trim(fgets(STDIN));
+$result = achekPost("$baseUrl/otp/verify", ["requestId" => $requestId, "code" => $code], $apiKey);
+echo "Valid: " . ($result["valid"] ? "true" : "false") . PHP_EOL;`;
 
   const blocks = [
-    { id: "curl", label: "cURL", code: curlSend },
-    { id: "js-send", label: "JS · Send", code: jsSend },
-    { id: "js-verify", label: "JS · Verify", code: verifyJs },
+    { id: "curl-send", label: "cURL · Send", code: curlSend },
+    { id: "curl-verify", label: "cURL · Verify", code: curlVerify },
+    { id: "js", label: "Node.js", code: jsSend },
+    { id: "python", label: "Python", code: pythonCode },
+    { id: "php", label: "PHP", code: phpCode },
   ];
 
   return (
     <div className="space-y-2">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ready-to-use code</p>
-      <Tabs defaultValue="curl">
-        <TabsList className="h-7">
+      <Tabs defaultValue="curl-send">
+        <TabsList className="h-7 flex-wrap">
           {blocks.map(b => <TabsTrigger key={b.id} value={b.id} className="text-xs h-6 px-2">{b.label}</TabsTrigger>)}
         </TabsList>
         {blocks.map(b => (
           <TabsContent key={b.id} value={b.id}>
             <div className="relative group">
-              <pre className="p-3 rounded-md bg-gray-950 text-gray-100 text-[11px] font-mono overflow-x-auto leading-relaxed">
+              <pre className="p-3 rounded-md bg-gray-950 text-gray-100 text-[11px] font-mono overflow-x-auto leading-relaxed max-h-56">
                 {b.code}
               </pre>
               <button

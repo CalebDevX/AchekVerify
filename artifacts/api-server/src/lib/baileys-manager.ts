@@ -27,6 +27,15 @@ interface SessionState {
 
 const sessions = new Map<number, SessionState>();
 
+// Incoming message callback — registered by bot-engine
+let incomingMessageHandler: ((numberId: number, fromJid: string, text: string) => void) | null = null;
+
+export function registerIncomingMessageHandler(
+  handler: (numberId: number, fromJid: string, text: string) => void,
+): void {
+  incomingMessageHandler = handler;
+}
+
 export function getSessionState(numberId: number): { connected: boolean; qrDataUrl: string | null; status: string } {
   const state = sessions.get(numberId);
   if (!state?.socket) return { connected: false, qrDataUrl: null, status: "disconnected" };
@@ -84,7 +93,7 @@ export async function startSession(numberId: number): Promise<void> {
     auth: state,
     printQRInTerminal: false,
     logger: baileysLogger as any,
-    browser: ["WhatOTP", "Chrome", "126.0.0"],
+    browser: ["AchekOTP", "Chrome", "126.0.0"],
     markOnlineOnConnect: false,
     connectTimeoutMs: 45_000,
     keepAliveIntervalMs: 30_000,
@@ -102,6 +111,23 @@ export async function startSession(numberId: number): Promise<void> {
   sessions.set(numberId, sessionState);
 
   socket.ev.on("creds.update", saveCreds);
+
+  // ── Incoming messages → bot engine ────────────────────────────────────────
+  socket.ev.on("messages.upsert", ({ messages, type }) => {
+    if (type !== "notify") return;
+    for (const msg of messages) {
+      if (msg.key.fromMe) continue;
+      const jid = msg.key.remoteJid;
+      if (!jid || jid.endsWith("@g.us") || jid.endsWith("@broadcast")) continue;
+      const text =
+        msg.message?.conversation ||
+        msg.message?.extendedTextMessage?.text ||
+        msg.message?.imageMessage?.caption ||
+        "";
+      if (!text.trim()) continue;
+      incomingMessageHandler?.(numberId, jid, text.trim());
+    }
+  });
 
   socket.ev.on("connection.update", async (update) => {
     const { connection, lastDisconnect, qr } = update;
@@ -181,6 +207,17 @@ export async function sendOtpMessage(
   }
 
   return { success: false };
+}
+
+export async function sendTextToJid(numberId: number, jid: string, text: string): Promise<boolean> {
+  const state = sessions.get(numberId);
+  if (!state?.connected || !state.socket) return false;
+  try {
+    await state.socket.sendMessage(jid, { text });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function updateDisplayName(numberId: number, displayName: string): Promise<boolean> {

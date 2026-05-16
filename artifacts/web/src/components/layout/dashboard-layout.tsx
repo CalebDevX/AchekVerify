@@ -9,7 +9,8 @@ import {
   BookText, 
   LogOut,
   Settings,
-  Smartphone
+  Smartphone,
+  Bot
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -25,6 +26,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
     { name: "API Keys", href: "/dashboard/api-keys", icon: KeyRound },
     { name: "Sender Numbers", href: "/dashboard/numbers", icon: Smartphone },
+    { name: "WhatsApp AI Bot", href: "/dashboard/bot", icon: Bot },
     { name: "Subscription", href: "/dashboard/subscription", icon: CreditCard },
     { name: "Logs", href: "/dashboard/logs", icon: List },
     { name: "Documentation", href: "/dashboard/docs", icon: BookText },
