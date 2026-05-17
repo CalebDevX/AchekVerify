@@ -8,6 +8,7 @@ import {
   LogOut,
   ArrowLeft,
   FileText,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -23,6 +24,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { name: "Platform Stats", href: "/admin", icon: LayoutDashboard },
     { name: "WhatsApp Numbers", href: "/admin/numbers", icon: Phone },
     { name: "Users", href: "/admin/users", icon: Users },
+    { name: "Pricing Plans", href: "/admin/plans", icon: CreditCard },
     { name: "OTP Logs", href: "/admin/otp-logs", icon: FileText },
   ];
 

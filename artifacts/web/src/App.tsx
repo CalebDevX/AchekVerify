@@ -23,6 +23,7 @@ import BotPage from "@/pages/dashboard/bot";
 import AdminDashboard from "@/pages/admin/index";
 import AdminNumbers from "@/pages/admin/numbers";
 import AdminUsers from "@/pages/admin/users";
+import AdminPlans from "@/pages/admin/plans";
 import AdminOtpLogs from "@/pages/admin/otp-logs";
 
 const queryClient = new QueryClient({
@@ -126,6 +127,13 @@ function Router() {
         <ProtectedRoute requireAdmin>
           <AdminLayout>
             <AdminUsers />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/plans">
+        <ProtectedRoute requireAdmin>
+          <AdminLayout>
+            <AdminPlans />
           </AdminLayout>
         </ProtectedRoute>
       </Route>

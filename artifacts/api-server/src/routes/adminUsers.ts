@@ -103,6 +103,36 @@ router.post("/admin/users/:id/role", requireAdmin, async (req: AuthRequest, res)
   });
 });
 
+// Edit user details (name, email)
+router.patch("/admin/users/:id", requireAdmin, async (req: AuthRequest, res) => {
+  const adminId = req.user?.id;
+  const id = parseInt(req.params.id as string);
+  const { name, email } = req.body;
+
+  if (!name && !email) {
+    return res.status(400).json({ error: "At least one field (name or email) is required" });
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  const updates: Partial<typeof usersTable.$inferInsert> = {};
+  if (name?.trim()) updates.name = name.trim();
+  if (email?.trim()) updates.email = email.trim().toLowerCase();
+
+  const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
+
+  req.log.info({ userId: id, adminId }, "Admin edited user");
+  return res.json({
+    id: updated.id,
+    email: updated.email,
+    name: updated.name,
+    role: updated.role,
+    suspended: updated.suspended,
+    createdAt: updated.createdAt,
+  });
+});
+
 // Delete user (permanently — cascades subscriptions, API keys, numbers, OTP logs)
 router.delete("/admin/users/:id", requireAdmin, async (req: AuthRequest, res) => {
   const adminId = req.user?.id;

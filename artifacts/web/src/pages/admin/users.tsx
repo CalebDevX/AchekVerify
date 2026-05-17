@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Shield, ShieldAlert, MoreHorizontal, CreditCard, Loader2, Trash2, ShieldCheck, ShieldX } from "lucide-react";
+import { Shield, ShieldAlert, MoreHorizontal, CreditCard, Loader2, Trash2, ShieldCheck, ShieldX, Pencil, Search, UserCheck } from "lucide-react";
 import {
   useListUsers,
   getListUsersQueryKey,
@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
@@ -54,6 +56,101 @@ interface UserRow {
     status: string;
     plan?: { id: number; name: string; price: number; otpLimit: number };
   };
+}
+
+function EditUserDialog({
+  user,
+  open,
+  onOpenChange,
+  onSuccess,
+}: {
+  user: UserRow | null;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSuccess: () => void;
+}) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const token = localStorage.getItem("whatotp_token");
+
+  const handleOpen = (v: boolean) => {
+    if (v && user) {
+      setName(user.name);
+      setEmail(user.email);
+    }
+    onOpenChange(v);
+  };
+
+  const save = async () => {
+    if (!user) return;
+    if (!name.trim() && !email.trim()) {
+      toast({ variant: "destructive", title: "Validation Error", description: "Name or email is required." });
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: name.trim(), email: email.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update user");
+      }
+      toast({ title: "User Updated", description: `${name} has been updated successfully.` });
+      onOpenChange(false);
+      onSuccess();
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Update Failed", description: e.message || "Please try again." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-4 w-4" /> Edit User
+          </DialogTitle>
+          <DialogDescription>Update name and email for this account.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-name">Full Name</Label>
+            <Input
+              id="edit-name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="e.g. Alice Okafor"
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-email">Email Address</Label>
+            <Input
+              id="edit-email"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="e.g. alice@example.com"
+              disabled={saving}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={save} disabled={saving}>
+            {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : "Save Changes"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function AssignPlanDialog({
@@ -222,8 +319,10 @@ function ChangeRoleDialog({
 export default function AdminUsers() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [search, setSearch] = useState("");
   const [planDialogUser, setPlanDialogUser] = useState<UserRow | null>(null);
   const [roleDialogUser, setRoleDialogUser] = useState<UserRow | null>(null);
+  const [editDialogUser, setEditDialogUser] = useState<UserRow | null>(null);
   const [deleteUser, setDeleteUser] = useState<UserRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -265,6 +364,16 @@ export default function AdminUsers() {
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
 
+  const filteredUsers = (users as UserRow[] | undefined)?.filter(u => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+  }) ?? [];
+
+  const totalUsers = (users as UserRow[] | undefined)?.length ?? 0;
+  const activeUsers = (users as UserRow[] | undefined)?.filter(u => !u.suspended).length ?? 0;
+  const adminUsers = (users as UserRow[] | undefined)?.filter(u => u.role === "admin").length ?? 0;
+
   return (
     <div className="space-y-6">
       <div>
@@ -272,10 +381,44 @@ export default function AdminUsers() {
         <p className="text-muted-foreground mt-1">Manage customer accounts, plans, subscriptions, and roles.</p>
       </div>
 
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardContent className="pt-5 pb-4">
+            <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Total Users</p>
+            <p className="text-3xl font-bold text-blue-900 mt-1">{totalUsers}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+          <CardContent className="pt-5 pb-4">
+            <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Active Accounts</p>
+            <p className="text-3xl font-bold text-emerald-900 mt-1">{activeUsers}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+          <CardContent className="pt-5 pb-4">
+            <p className="text-xs font-semibold text-red-600 uppercase tracking-wide">Admin Accounts</p>
+            <p className="text-3xl font-bold text-red-900 mt-1">{adminUsers}</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
-        <CardHeader>
-          <CardTitle>Customer Directory</CardTitle>
-          <CardDescription>All registered developers and businesses on the platform.</CardDescription>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle>Customer Directory</CardTitle>
+              <CardDescription>All registered developers and businesses on the platform.</CardDescription>
+            </div>
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or email..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
@@ -284,10 +427,10 @@ export default function AdminUsers() {
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </div>
-          ) : users && users.length > 0 ? (
+          ) : filteredUsers.length > 0 ? (
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/30">
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Plan</TableHead>
@@ -298,14 +441,21 @@ export default function AdminUsers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(users as UserRow[]).map((user) => (
-                  <TableRow key={user.id} className={user.suspended ? "opacity-60 bg-muted/50" : ""}>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id} className={user.suspended ? "opacity-60 bg-muted/30" : "hover:bg-muted/20"}>
                     <TableCell>
-                      <div className="font-medium">{user.name}</div>
-                      <div className="text-sm text-muted-foreground">{user.email}</div>
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          {user.name?.charAt(0)?.toUpperCase() ?? "?"}
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">{user.name}</div>
+                          <div className="text-xs text-muted-foreground">{user.email}</div>
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={user.role === "admin" ? "destructive" : "secondary"}>
+                      <Badge variant={user.role === "admin" ? "destructive" : "secondary"} className="text-xs">
                         {user.role}
                       </Badge>
                     </TableCell>
@@ -313,7 +463,7 @@ export default function AdminUsers() {
                       {user.subscription?.plan ? (
                         <div className="flex flex-col">
                           <span className="font-medium text-sm">{user.subscription.plan.name}</span>
-                          <span className={user.subscription.status === "active" ? "text-primary text-xs" : "text-muted-foreground text-xs"}>
+                          <span className={`text-xs ${user.subscription.status === "active" ? "text-emerald-600" : "text-muted-foreground"}`}>
                             {user.subscription.status}
                           </span>
                         </div>
@@ -322,19 +472,19 @@ export default function AdminUsers() {
                       )}
                     </TableCell>
                     <TableCell className="font-mono text-muted-foreground text-sm">
-                      {user.otpCount?.toLocaleString() || 0}
+                      {(user.otpCount ?? 0).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {format(new Date(user.createdAt), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell>
                       {user.suspended ? (
-                        <Badge variant="destructive" className="flex w-fit items-center gap-1">
+                        <Badge variant="destructive" className="flex w-fit items-center gap-1 text-xs">
                           <ShieldAlert className="h-3 w-3" /> Suspended
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 flex w-fit items-center gap-1">
-                          <Shield className="h-3 w-3" /> Active
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 flex w-fit items-center gap-1 text-xs">
+                          <UserCheck className="h-3 w-3" /> Active
                         </Badge>
                       )}
                     </TableCell>
@@ -348,6 +498,9 @@ export default function AdminUsers() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Account Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
+                          <DropdownMenuItem className="flex items-center gap-2" onClick={() => setEditDialogUser(user)}>
+                            <Pencil className="h-4 w-4" /> Edit Details
+                          </DropdownMenuItem>
                           <DropdownMenuItem className="flex items-center gap-2" onClick={() => setPlanDialogUser(user)}>
                             <CreditCard className="h-4 w-4" /> Change Plan
                           </DropdownMenuItem>
@@ -381,11 +534,14 @@ export default function AdminUsers() {
               </TableBody>
             </Table>
           ) : (
-            <div className="text-center py-16 text-muted-foreground">No users found.</div>
+            <div className="text-center py-16 text-muted-foreground">
+              {search ? `No users matching "${search}"` : "No users found."}
+            </div>
           )}
         </CardContent>
       </Card>
 
+      <EditUserDialog user={editDialogUser} open={!!editDialogUser} onOpenChange={v => !v && setEditDialogUser(null)} onSuccess={refresh} />
       <AssignPlanDialog user={planDialogUser} open={!!planDialogUser} onOpenChange={(v) => !v && setPlanDialogUser(null)} onSuccess={refresh} />
       <ChangeRoleDialog user={roleDialogUser} open={!!roleDialogUser} onOpenChange={(v) => !v && setRoleDialogUser(null)} onSuccess={refresh} />
 
